@@ -137,6 +137,12 @@ const allPubCount = (await getCollection('publications')).length;
               to large-scale geospatial analysis.
             </p>
           </div>
+          <div class="mt-4">
+            <a href="/cv.pdf" target="_blank" rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700/60 hover:bg-teal-50 dark:hover:bg-teal-900/40 hover:text-teal-700 dark:hover:text-teal-400 text-slate-700 dark:text-slate-200 text-sm font-medium transition-colors no-underline">
+              <i class="fa-solid fa-file-pdf"></i> Download CV
+            </a>
+          </div>
         </section>
 
         <!-- Research Focus + Education sidebar (1/3) -->
@@ -144,9 +150,10 @@ const allPubCount = (await getCollection('publications')).length;
           <div>
             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Research Focus</h3>
             <div class="flex flex-wrap gap-2">
-              <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Antarctic Glaciers</span>
-              <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Historical DEMs</span>
+              <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Antarctica</span>
+              <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Historical Imagery</span>
               <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Photogrammetry</span>
+              <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Structure-From-Motion</span>
               <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Machine Learning</span>
               <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Computer Vision</span>
             </div>
@@ -158,10 +165,14 @@ const allPubCount = (await getCollection('publications')).length;
               <li>
                 <p class="font-semibold text-slate-800 dark:text-slate-200 mb-0.5">PhD · Geoscience &amp; Remote Sensing</p>
                 <p class="text-slate-500 dark:text-slate-400 text-xs">TU Delft</p>
+                <a href="https://research.tudelft.nl/files/266734402/Dahle_dissertation_final.pdf" target="_blank" rel="noopener noreferrer"
+                  class="text-xs text-teal-700 dark:text-teal-400 hover:underline">Thesis &rarr;</a>
               </li>
               <li>
                 <p class="font-semibold text-slate-800 dark:text-slate-200 mb-0.5">MSc · Geomatics</p>
                 <p class="text-slate-500 dark:text-slate-400 text-xs">TU Delft</p>
+                <a href="https://3d.bk.tudelft.nl/pdfs/P5_Dahle.pdf" target="_blank" rel="noopener noreferrer"
+                  class="text-xs text-teal-700 dark:text-teal-400 hover:underline">Thesis &rarr;</a>
               </li>
             </ul>
           </div>
@@ -170,7 +181,7 @@ const allPubCount = (await getCollection('publications')).length;
             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Publications</h3>
             <p class="text-sm text-slate-700 dark:text-slate-300">
               <span class="text-2xl font-extrabold text-teal-700 dark:text-teal-400">{allPubCount}</span>
-              <span class="text-slate-500 dark:text-slate-400 ml-1">peer-reviewed papers</span>
+              <span class="text-slate-500 dark:text-slate-400 ml-1">peer-reviewed articles</span>
             </p>
             <a href="/publications" class="mt-2 inline-flex items-center text-sm text-teal-700 dark:text-teal-400 hover:underline font-medium no-underline">
               View all &rarr;
