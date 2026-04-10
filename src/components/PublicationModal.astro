@@ -1,6 +1,11 @@
+---
+import { SITE_TITLE } from '../consts';
+---
+
 <!-- Publication detail modal — include once per page that uses PublicationCard -->
 <div
   id="pub-detail-modal"
+  data-author-name={SITE_TITLE}
   class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden overflow-y-auto py-8 px-4"
   role="dialog"
   aria-modal="true"
@@ -136,7 +141,12 @@
     metaEl.innerHTML = `${oaIcon} <span>${venueYear}</span>`;
 
     titleEl.textContent   = data.title   ?? '';
-    authorsEl.textContent = data.authors ?? '';
+    // Bold the site author's name in the authors list (client-side)
+    const authorName = modal?.dataset.authorName ?? 'Felix Dahle';
+    function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    const re = new RegExp(escapeRegExp(authorName), 'g');
+    const authorsHtml = (data.authors ?? '').replace(re, `<strong class="font-semibold text-slate-900 dark:text-white">${authorName}</strong>`);
+    authorsEl.innerHTML = authorsHtml;
 
     // Abstract — prefer explicit abstract field, fall back to description
     const text = data.abstract || data.description || '';
