@@ -4,6 +4,7 @@ import BaseHead from '../../components/BaseHead.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import PublicationCard from '../../components/PublicationCard.astro';
+import PublicationModal from '../../components/PublicationModal.astro';
 import { SITE_TITLE } from '../../consts';
 
 const publications = (await getCollection('publications'))
@@ -15,36 +16,143 @@ const publications = (await getCollection('publications'))
   <head>
     <BaseHead title={`Publications — ${SITE_TITLE}`} description="Full list of publications by Felix Dahle." />
   </head>
-  <body class="bg-slate-50 text-slate-800 antialiased">
+  <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 antialiased">
     <Header />
 
     <main class="max-w-7xl mx-auto px-6 py-12">
-      <h1 class="text-3xl font-extrabold text-slate-900 mb-1">Publications</h1>
-      <p class="text-slate-400 text-sm mb-10">{publications.length} publications · sorted by year</p>
 
-      <!-- Masonry grid using CSS columns -->
-      <div class="columns-1 md:columns-2 xl:columns-3 gap-5">
-        {publications.map(pub => (
-          <div class="break-inside-avoid mb-5">
-            <PublicationCard
-              title={pub.data.title}
-              authors={pub.data.authors}
-              venue={pub.data.venue}
-              year={pub.data.year}
-              description={pub.data.description}
-              img={pub.data.img}
-              doi={pub.data.doi}
-              pdf={pub.data.pdf}
-              code={pub.data.code}
-              openAccess={pub.data.openAccess}
-              bibtex={pub.data.bibtex}
-              variant="card"
-            />
-          </div>
-        ))}
+      <!-- Header + sort controls -->
+      <div class="flex flex-col sm:flex-row sm:items-end gap-4 mb-8">
+        <div>
+          <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white mb-1">Publications</h1>
+          <p class="text-slate-400 dark:text-slate-500 text-sm">{publications.length} publications</p>
+        </div>
+
+        <!-- Sort buttons -->
+        <div class="flex flex-wrap items-center gap-1.5 sm:ml-auto">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">Sort by</span>
+          <button data-sort="year"
+            class="sort-btn active px-3 py-1.5 rounded-full text-sm font-medium bg-teal-700 text-white transition-colors">
+            Year <span class="sort-arrow">↓</span>
+          </button>
+          <button data-sort="author"
+            class="sort-btn px-3 py-1.5 rounded-full text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
+            Author
+          </button>
+          <button data-sort="venue"
+            class="sort-btn px-3 py-1.5 rounded-full text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
+            Venue
+          </button>
+          <button data-sort="title"
+            class="sort-btn px-3 py-1.5 rounded-full text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
+            Title
+          </button>
+        </div>
+      </div>
+
+      <!-- Publications grid (CSS grid so JS can reorder children) -->
+      <div id="pub-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {publications.map(pub => {
+          const firstAuthorLastName = pub.data.authors.split(',')[0].trim().split(' ').pop()?.toLowerCase() ?? '';
+          return (
+            <div
+              data-year={pub.data.year}
+              data-author={firstAuthorLastName}
+              data-venue={pub.data.venue.toLowerCase()}
+              data-title={pub.data.title.toLowerCase()}
+            >
+              <PublicationCard
+                title={pub.data.title}
+                authors={pub.data.authors}
+                venue={pub.data.venue}
+                year={pub.data.year}
+                description={pub.data.description}
+                img={pub.data.img}
+                doi={pub.data.doi}
+                pdf={pub.data.pdf}
+                code={pub.data.code}
+                openAccess={pub.data.openAccess}
+                bibtex={pub.data.bibtex}
+                abstract={pub.data.abstract}
+                variant="card"
+              />
+            </div>
+          );
+        })}
       </div>
     </main>
+
+    <PublicationModal />
 
     <Footer />
   </body>
 </html>
+
+<script>
+  type SortKey = 'year' | 'author' | 'venue' | 'title';
+  const state: { key: SortKey; dir: 1 | -1 } = { key: 'year', dir: -1 };
+
+  function getValue(el: HTMLElement, key: SortKey): string | number {
+    const raw = el.dataset[key] ?? '';
+    return key === 'year' ? parseFloat(raw) : raw;
+  }
+
+  function sortGrid() {
+    const grid = document.getElementById('pub-grid');
+    if (!grid) return;
+    const items = Array.from(grid.children) as HTMLElement[];
+    items.sort((a, b) => {
+      const va = getValue(a, state.key);
+      const vb = getValue(b, state.key);
+      const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+      return state.dir * cmp;
+    });
+    items.forEach(item => grid.appendChild(item));
+  }
+
+  function updateUI() {
+    document.querySelectorAll<HTMLButtonElement>('.sort-btn').forEach(btn => {
+      const isActive = btn.dataset.sort === state.key;
+      // Reset styles
+      btn.classList.remove(
+        'bg-teal-700', 'text-white',
+        'text-slate-500', 'dark:text-slate-400',
+        'hover:bg-slate-100', 'dark:hover:bg-slate-700',
+        'hover:text-slate-800', 'dark:hover:text-slate-200',
+      );
+      if (isActive) {
+        btn.classList.add('bg-teal-700', 'text-white');
+      } else {
+        btn.classList.add(
+          'text-slate-500', 'dark:text-slate-400',
+          'hover:bg-slate-100', 'dark:hover:bg-slate-700',
+          'hover:text-slate-800', 'dark:hover:text-slate-200',
+        );
+      }
+      // Arrow indicator
+      const existingArrow = btn.querySelector('.sort-arrow');
+      if (existingArrow) existingArrow.remove();
+      if (isActive) {
+        const arrow = document.createElement('span');
+        arrow.className = 'sort-arrow ml-0.5';
+        arrow.textContent = state.dir === -1 ? '↓' : '↑';
+        btn.appendChild(arrow);
+      }
+    });
+    
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.sort as SortKey;
+      if (state.key === key) {
+        state.dir = state.dir === 1 ? -1 : 1;
+      } else {
+        state.key = key;
+        state.dir = key === 'year' ? -1 : 1;  // default desc for year, asc for text fields
+      }
+      sortGrid();
+      updateUI();
+    });
+  });
+</script>

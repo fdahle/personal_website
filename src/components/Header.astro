@@ -2,17 +2,52 @@
 import HeaderLink from './HeaderLink.astro';
 ---
 
-<header class="sticky top-0 z-50 bg-white border-b border-slate-200">
-	<nav class="max-w-6xl mx-auto px-6 flex items-center justify-between h-14">
-		<a href="/" class="font-semibold text-slate-900 hover:text-teal-700 transition-colors">
-			Felix Dahle
-		</a>
-		<div class="flex gap-1 text-sm font-medium">
-			<HeaderLink href="/">Home</HeaderLink>
-			<HeaderLink href="/publications">Publications</HeaderLink>
-			<HeaderLink href="/blog">Blog</HeaderLink>
-		</div>
-	</nav>
+<header class="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 transition-colors">
+  <nav class="max-w-6xl mx-auto px-6 flex items-center justify-between h-14">
+    <div class="flex items-center gap-3">
+      <button
+        id="theme-toggle"
+        aria-label="Toggle dark mode"
+        class="w-10 h-10 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+      >
+        <i id="theme-icon" class="fa-solid fa-moon text-base"></i>
+      </button>
+      <a href="/" class="font-semibold text-slate-900 dark:text-white hover:text-teal-700 dark:hover:text-teal-400 transition-colors no-underline">
+        Felix Dahle
+      </a>
+    </div>
+    <div class="flex items-center gap-1 text-sm font-medium">
+      <HeaderLink href="/">Home</HeaderLink>
+      <HeaderLink href="/publications">Publications</HeaderLink>
+      <HeaderLink href="/blog">Blog</HeaderLink>
+    </div>
+  </nav>
 </header>
 
+<script>
+  function initThemeToggle() {
+    const btn  = document.getElementById('theme-toggle');
+    const icon = document.getElementById('theme-icon');
+    if (!btn || !icon) return;
+
+    function syncIcon() {
+      const isDark = document.documentElement.classList.contains('dark');
+      if (isDark) {
+        icon.className = 'fa-solid fa-sun text-base text-amber-400';
+      } else {
+        icon.className = 'fa-solid fa-moon text-base';
+      }
+    }
+
+    syncIcon();
+
+    btn.addEventListener('click', () => {
+      const nowDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', nowDark ? 'dark' : 'light');
+      syncIcon();
+    });
+  }
+
+  initThemeToggle();
+</script>
 

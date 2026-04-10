@@ -4,11 +4,14 @@ import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import PublicationCard from '../components/PublicationCard.astro';
+import PublicationModal from '../components/PublicationModal.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 
 const featuredPubs = (await getCollection('publications'))
   .filter(p => p.data.featured)
   .sort((a, b) => b.data.year - a.data.year);
+
+const allPubCount = (await getCollection('publications')).length;
 ---
 
 <!doctype html>
@@ -16,157 +19,286 @@ const featuredPubs = (await getCollection('publications'))
   <head>
     <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
   </head>
-  <body class="bg-slate-50 text-slate-800 antialiased">
+  <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 antialiased">
     <Header />
 
-    <main class="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-16">
+    <!-- ── Hero ─────────────────────────────────────────────────────────── -->
+    <section class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+      <div class="max-w-5xl mx-auto px-6 py-14 flex flex-col sm:flex-row items-center sm:items-start gap-8">
 
-      <!-- Sidebar -->
-      <aside class="space-y-8">
-        <div class="flex flex-col items-center lg:items-start text-center lg:text-left">
-
-          <!-- Profile picture (replace /img/dahle.png with your photo) -->
-          <div class="w-44 h-44 rounded-full border-4 border-white shadow-md mb-5 overflow-hidden flex-shrink-0 relative">
-            <div class="absolute inset-0 bg-gradient-to-br from-teal-400 to-slate-600 flex items-center justify-center">
-              <span class="text-white text-4xl font-bold select-none">FD</span>
-            </div>
-            <img
-              src="/img/dahle.png"
-              alt="Felix Dahle"
-              class="absolute inset-0 w-full h-full object-cover"
-              onerror="this.style.display='none'"
-            />
+        <!-- Profile picture – click to reveal vCard QR code -->
+        <div
+          id="profile-pic-btn"
+          class="w-36 h-36 sm:w-44 sm:h-44 rounded-full border-4 border-slate-100 dark:border-slate-700 shadow-lg overflow-hidden flex-shrink-0 relative cursor-pointer select-none"
+          role="button"
+          tabindex="0"
+          title="Click to save contact"
+          aria-label="Show contact QR code"
+        >
+          <div class="absolute inset-0 bg-gradient-to-br from-teal-400 to-slate-600 flex items-center justify-center">
+            <span class="text-white text-4xl font-bold">FD</span>
           </div>
+          <img
+            src="/img/me.jpg"
+            alt="Felix Dahle"
+            class="absolute inset-0 w-full h-full object-cover"
+            onerror="this.style.display='none'"
+          />
+        </div>
 
-          <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Felix Dahle</h1>
-          <p class="text-base text-teal-700 font-semibold mb-3">Postdoctoral Researcher</p>
+        <!-- Name · title · social chips -->
+        <div class="flex-1 text-center sm:text-left">
+          <h1 class="text-4xl font-extrabold text-slate-900 dark:text-white mb-1">Felix Dahle</h1>
+          <p class="text-lg text-teal-700 dark:text-teal-400 font-semibold mb-1">Postdoctoral Researcher</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            <a href="https://www.tudelft.nl/citg/over-faculteit/afdelingen/geoscience-remote-sensing"
+              target="_blank" rel="noopener noreferrer"
+              class="hover:text-teal-700 dark:hover:text-teal-400 transition-colors">
+              Geoscience &amp; Remote Sensing Group
+            </a>
+            &nbsp;·&nbsp;
+            <a href="https://www.tudelft.nl/en/" target="_blank" rel="noopener noreferrer"
+              class="font-medium hover:text-teal-700 dark:hover:text-teal-400 transition-colors">
+              TU Delft
+            </a>
+          </p>
 
-          <div class="text-sm text-slate-600 space-y-1 mb-5">
-            <p>
-              <a href="https://www.tudelft.nl/citg/over-faculteit/afdelingen/geoscience-remote-sensing"
-                target="_blank" rel="noopener noreferrer"
-                class="hover:text-teal-700 transition-colors">
-                Geoscience &amp; Remote Sensing Group
-              </a>
-            </p>
-            <p>
-              <a href="https://www.tudelft.nl/en/" target="_blank" rel="noopener noreferrer"
-                class="font-semibold hover:text-teal-700 transition-colors">
-                TU Delft
-              </a>
-            </p>
-          </div>
-
-          <!-- Social icons -->
-          <div class="flex gap-4 text-slate-500 text-xl">
+          <!-- Social chips -->
+          <div class="flex flex-wrap justify-center sm:justify-start gap-2">
             <a href="https://github.com/fdahle" target="_blank" rel="noopener noreferrer"
-              class="hover:text-slate-900 transition-colors" title="GitHub">
-              <i class="fa-brands fa-github"></i>
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium transition-colors no-underline">
+              <i class="fa-brands fa-github"></i> GitHub
             </a>
             <a href="https://www.researchgate.net/profile/Felix-Dahle" target="_blank" rel="noopener noreferrer"
-              class="hover:text-teal-600 transition-colors" title="ResearchGate">
-              <i class="fa-brands fa-researchgate"></i>
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700/60 hover:bg-teal-50 dark:hover:bg-teal-900/40 hover:text-teal-700 dark:hover:text-teal-400 text-slate-700 dark:text-slate-200 text-sm font-medium transition-colors no-underline">
+              <i class="fa-brands fa-researchgate"></i> ResearchGate
             </a>
             <a href="https://www.linkedin.com/in/felix-dahle" target="_blank" rel="noopener noreferrer"
-              class="hover:text-blue-600 transition-colors" title="LinkedIn">
-              <i class="fa-brands fa-linkedin"></i>
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700/60 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-400 text-slate-700 dark:text-slate-200 text-sm font-medium transition-colors no-underline">
+              <i class="fa-brands fa-linkedin"></i> LinkedIn
             </a>
             <a href="https://orcid.org/0000-0001-6706-7099" target="_blank" rel="noopener noreferrer"
-              class="hover:text-lime-600 transition-colors" title="ORCID">
-              <i class="fa-brands fa-orcid"></i>
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700/60 hover:bg-lime-50 dark:hover:bg-lime-900/30 hover:text-lime-700 dark:hover:text-lime-400 text-slate-700 dark:text-slate-200 text-sm font-medium transition-colors no-underline">
+              <i class="fa-brands fa-orcid"></i> ORCID
             </a>
             <a href="https://www.tudelft.nl/citg/over-faculteit/afdelingen/geoscience-remote-sensing/staff/phd-students/f-felix-dahle"
               target="_blank" rel="noopener noreferrer"
-              class="hover:text-blue-800 transition-colors" title="TU Delft profile">
-              <i class="fa-solid fa-building-columns"></i>
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700/60 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-800 dark:hover:text-blue-400 text-slate-700 dark:text-slate-200 text-sm font-medium transition-colors no-underline">
+              <i class="fa-solid fa-building-columns"></i> TU Delft
             </a>
           </div>
         </div>
+      </div>
+    </section>
 
-        <!-- Research tags -->
-        <div class="border-t border-slate-200 pt-6">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Research Focus</h3>
-          <div class="flex flex-wrap gap-2">
-            <span class="px-3 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600">Antarctic Glaciers</span>
-            <span class="px-3 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600">Historical DEMs</span>
-            <span class="px-3 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600">Photogrammetry</span>
-            <span class="px-3 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600">Machine Learning</span>
-            <span class="px-3 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600">Computer Vision</span>
-          </div>
-        </div>
-      </aside>
+    <!-- ── Content ───────────────────────────────────────────────────────── -->
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-14">
 
-      <!-- Main content -->
-      <div class="space-y-14">
+      <!-- About + Research Focus / Education -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
 
-        <!-- About / Research description -->
-        <section>
-          <h2 class="text-xl font-bold text-slate-900 mb-4 pb-2 border-b border-slate-200">About</h2>
-          <div class="text-slate-700 leading-relaxed space-y-3 text-sm">
+        <!-- About text (2/3) -->
+        <section class="lg:col-span-2">
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">About</h2>
+          <div class="text-slate-700 dark:text-slate-300 leading-relaxed space-y-3 text-sm">
             <p>
               I am a Postdoctoral Researcher in the
               <a href="https://www.tudelft.nl/citg/over-faculteit/afdelingen/geoscience-remote-sensing"
-                target="_blank" rel="noopener noreferrer" class="text-teal-700 hover:underline">
+                target="_blank" rel="noopener noreferrer" class="text-teal-700 dark:text-teal-400 hover:underline">
                 Geoscience &amp; Remote Sensing Group
               </a>
               at <a href="https://www.tudelft.nl/en/" target="_blank" rel="noopener noreferrer"
-                class="text-teal-700 hover:underline">TU Delft</a>,
-              supervised by
+                class="text-teal-700 dark:text-teal-400 hover:underline">TU Delft</a>,
+              working with
               <a href="https://www.tudelft.nl/citg/over-faculteit/afdelingen/geoscience-remote-sensing/staff/scientific-staff/dr-ir-b-bert-wouters"
-                target="_blank" rel="noopener noreferrer" class="text-teal-700 hover:underline">Bert Wouters</a>
+                target="_blank" rel="noopener noreferrer" class="text-teal-700 dark:text-teal-400 hover:underline">Bert Wouters</a>
               and
               <a href="http://doris.tudelft.nl/~rlindenbergh/" target="_blank" rel="noopener noreferrer"
-                class="text-teal-700 hover:underline">Roderik Lindenbergh</a>.
+                class="text-teal-700 dark:text-teal-400 hover:underline">Roderik Lindenbergh</a>.
             </p>
             <p>
-              My research focuses on historical changes of Antarctic glaciers from photogrammetry. I study historical
-              aerial imagery from the Antarctic continent to derive historical digital elevation models (DEMs).
-              These are compared with present-day elevation data to obtain a detailed picture of elevation and mass
-              changes over the past 50 years — helping to understand the long-term response of the Antarctic Peninsula
-              to changing climate conditions and ice shelf thinning.
+              My work sits at the intersection of photogrammetry, computer vision, and machine learning —
+              applied to one of the most demanding environments on Earth. I reconstruct historical elevation
+              changes of Antarctic glaciers from archival aerial imagery, building pipelines that turn
+              decades-old photographs into quantitative records of ice loss. What draws me to this work is
+              the challenge: noisy data, extreme conditions, and few ground-truth references force creative,
+              robust solutions.
             </p>
             <p>
-              My research interests span Geo-informatics, Computer Vision, Photogrammetry, and Machine Learning.
-              I obtained a Master's degree in
+              I hold a PhD from the
+              <a href="https://www.tudelft.nl/citg/over-faculteit/afdelingen/geoscience-remote-sensing"
+                target="_blank" rel="noopener noreferrer" class="text-teal-700 dark:text-teal-400 hover:underline">
+                Geoscience &amp; Remote Sensing Group
+              </a>
+              at TU Delft, and a Master's in
               <a href="https://www.tudelft.nl/onderwijs/opleidingen/masters/gm/msc-geomatics"
-                target="_blank" rel="noopener noreferrer" class="text-teal-700 hover:underline">Geomatics</a>
-              at TU Delft, during which I worked as a developer for
-              <a href="https://readar.com/en/" target="_blank" rel="noopener noreferrer"
-                class="text-teal-700 hover:underline">Readar</a>.
+                target="_blank" rel="noopener noreferrer" class="text-teal-700 dark:text-teal-400 hover:underline">Geomatics</a>,
+              also from TU Delft. My research interests span the full stack from low-level image processing
+              to large-scale geospatial analysis.
             </p>
           </div>
         </section>
 
-        <!-- Selected publications -->
-        <section>
-          <div class="flex items-baseline justify-between mb-4 pb-2 border-b border-slate-200">
-            <h2 class="text-xl font-bold text-slate-900">Selected Publications</h2>
-            <a href="/publications" class="text-sm text-teal-700 hover:underline font-medium">
-              All publications &rarr;
+        <!-- Research Focus + Education sidebar (1/3) -->
+        <aside class="space-y-7">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Research Focus</h3>
+            <div class="flex flex-wrap gap-2">
+              <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Antarctic Glaciers</span>
+              <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Historical DEMs</span>
+              <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Photogrammetry</span>
+              <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Machine Learning</span>
+              <span class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-600 dark:text-slate-300">Computer Vision</span>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Education</h3>
+            <ul class="space-y-3 text-sm">
+              <li>
+                <p class="font-semibold text-slate-800 dark:text-slate-200 mb-0.5">PhD · Geoscience &amp; Remote Sensing</p>
+                <p class="text-slate-500 dark:text-slate-400 text-xs">TU Delft</p>
+              </li>
+              <li>
+                <p class="font-semibold text-slate-800 dark:text-slate-200 mb-0.5">MSc · Geomatics</p>
+                <p class="text-slate-500 dark:text-slate-400 text-xs">TU Delft</p>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Publications</h3>
+            <p class="text-sm text-slate-700 dark:text-slate-300">
+              <span class="text-2xl font-extrabold text-teal-700 dark:text-teal-400">{allPubCount}</span>
+              <span class="text-slate-500 dark:text-slate-400 ml-1">peer-reviewed papers</span>
+            </p>
+            <a href="/publications" class="mt-2 inline-flex items-center text-sm text-teal-700 dark:text-teal-400 hover:underline font-medium no-underline">
+              View all &rarr;
             </a>
           </div>
-          <div class="space-y-4">
-            {featuredPubs.map(pub => (
-              <PublicationCard
-                title={pub.data.title}
-                authors={pub.data.authors}
-                venue={pub.data.venue}
-                year={pub.data.year}
-                description={pub.data.description}
-                img={pub.data.img}
-                doi={pub.data.doi}
-                pdf={pub.data.pdf}
-                code={pub.data.code}
-                openAccess={pub.data.openAccess}
-                bibtex={pub.data.bibtex}
-              />
-            ))}
-          </div>
-        </section>
-
+        </aside>
       </div>
+
+      <!-- Selected Publications -->
+      <section>
+        <div class="flex items-baseline justify-between mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white">Selected Publications</h2>
+          <a href="/publications" class="text-sm text-teal-700 dark:text-teal-400 hover:underline font-medium no-underline">
+            All {allPubCount} publications &rarr;
+          </a>
+        </div>
+        <div class="space-y-4">
+          {featuredPubs.map(pub => (
+            <PublicationCard
+              title={pub.data.title}
+              authors={pub.data.authors}
+              venue={pub.data.venue}
+              year={pub.data.year}
+              description={pub.data.description}
+              img={pub.data.img}
+              doi={pub.data.doi}
+              pdf={pub.data.pdf}
+              code={pub.data.code}
+              openAccess={pub.data.openAccess}
+              bibtex={pub.data.bibtex}
+              abstract={pub.data.abstract}
+            />
+          ))}
+        </div>
+      </section>
+
     </main>
+
+    <PublicationModal />
+
+    <!-- ── vCard QR code modal ───────────────────────────────────────────── -->
+    <div
+      id="qr-modal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="qr-modal-title"
+    >
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-2xl text-center max-w-xs w-full mx-4 relative">
+        <button
+          id="qr-close"
+          class="absolute top-3 right-3 p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+          aria-label="Close"
+        >
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <p id="qr-modal-title" class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-4">
+          <i class="fa-solid fa-address-card mr-1"></i> Scan to save contact
+        </p>
+        <img
+          id="qr-img"
+          src=""
+          alt="vCard QR code"
+          width="192"
+          height="192"
+          class="w-48 h-48 mx-auto rounded-lg"
+        />
+        <p class="mt-4 font-bold text-slate-900 dark:text-white">Felix Dahle</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Postdoctoral Researcher · TU Delft</p>
+      </div>
+    </div>
 
     <Footer />
   </body>
 </html>
+
+<script>
+  // ── Profile picture: spin + vCard QR code modal ───────────────────────────
+  const vcard = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'N:Dahle;Felix;;;',
+    'FN:Felix Dahle',
+    'ORG:TU Delft',
+    'TITLE:Postdoctoral Researcher',
+    'EMAIL:f.dahle@tudelft.nl',
+    'URL:https://fdahle.de',
+    'END:VCARD',
+  ].join('\r\n');
+
+  const qrSrc =
+    'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' +
+    encodeURIComponent(vcard);
+
+  const profileBtn = document.getElementById('profile-pic-btn') as HTMLElement;
+  const modal      = document.getElementById('qr-modal')        as HTMLElement;
+  const closeBtn   = document.getElementById('qr-close')        as HTMLButtonElement;
+  const qrImg      = document.getElementById('qr-img')          as HTMLImageElement;
+
+  function openModal() {
+    // Lazy-load QR image only on first open
+    if (!qrImg.getAttribute('src')) qrImg.src = qrSrc;
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    closeBtn.focus();
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+    profileBtn.focus();
+  }
+
+  profileBtn?.addEventListener('click', () => {
+    openModal();
+  });
+
+  profileBtn?.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(); }
+  });
+
+  closeBtn?.addEventListener('click', closeModal);
+
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+  });
+</script>

@@ -1,0 +1,204 @@
+<!-- Publication detail modal — include once per page that uses PublicationCard -->
+<div
+  id="pub-detail-modal"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden overflow-y-auto py-8 px-4"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="pub-detail-title"
+>
+  <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full relative my-auto">
+    <!-- Close button -->
+    <button
+      id="pub-detail-close"
+      class="absolute top-3 right-3 z-10 p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+      aria-label="Close"
+    >
+      <i class="fa-solid fa-xmark text-lg"></i>
+    </button>
+
+    <!-- Image (hidden when not available) -->
+    <div id="pub-detail-img-wrap">
+      <img
+        id="pub-detail-img"
+        src=""
+        alt=""
+        class="w-full aspect-video object-cover rounded-t-2xl"
+      />
+    </div>
+
+    <!-- Content -->
+    <div class="p-6 pt-5">
+      <!-- Venue + year + open-access badge -->
+      <p id="pub-detail-meta" class="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5 text-teal-700 dark:text-teal-400"></p>
+
+      <h2 id="pub-detail-title" class="text-xl font-bold text-slate-900 dark:text-white mb-1 leading-snug pr-8"></h2>
+      <p id="pub-detail-authors" class="text-sm text-slate-500 dark:text-slate-400 mb-5"></p>
+
+      <!-- Abstract section (hidden when no text available) -->
+      <div id="pub-detail-abstract-section">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Abstract</h3>
+        <div id="pub-detail-abstract" class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-5"></div>
+      </div>
+
+      <!-- Action links / buttons -->
+      <div id="pub-detail-links" class="flex flex-wrap gap-2 text-xs"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  interface PubData {
+    title?: string;
+    authors?: string;
+    venue?: string;
+    year?: number;
+    abstract?: string;
+    description?: string;
+    img?: string;
+    doi?: string;
+    pdf?: string;
+    code?: string;
+    openAccess?: boolean;
+    bibtex?: string;
+  }
+
+  const modal          = document.getElementById('pub-detail-modal')          as HTMLElement;
+  const closeBtn       = document.getElementById('pub-detail-close')          as HTMLButtonElement;
+  const imgWrap        = document.getElementById('pub-detail-img-wrap')       as HTMLElement;
+  const imgEl          = document.getElementById('pub-detail-img')            as HTMLImageElement;
+  const metaEl         = document.getElementById('pub-detail-meta')           as HTMLElement;
+  const titleEl        = document.getElementById('pub-detail-title')          as HTMLElement;
+  const authorsEl      = document.getElementById('pub-detail-authors')        as HTMLElement;
+  const abstractSec    = document.getElementById('pub-detail-abstract-section') as HTMLElement;
+  const abstractEl     = document.getElementById('pub-detail-abstract')       as HTMLElement;
+  const linksEl        = document.getElementById('pub-detail-links')          as HTMLElement;
+  function renderAbstract(text: string) {
+    if (!text) return '';
+
+    // 1) Convert Markdown links [text](url) -> <a>
+    let processed = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+    // 2) Protect existing anchor tags produced above so we don't double-linkify them
+    const anchors: string[] = [];
+    processed = processed.replace(/<a\b[^>]*>[\s\S]*?<\/a>/gi, (m) => {
+      anchors.push(m);
+      return `__ANCHOR_PLACEHOLDER_${anchors.length - 1}__`;
+    });
+
+    // 3) Auto-link plain URLs (http(s):// or www.)
+    processed = processed.replace(/(?:https?:\/\/|www\.)[^\s<]+/gi, (url) => {
+      const href = url.match(/^https?:\/\//i) ? url : `https://${url}`;
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+
+    // 4) Restore protected anchors
+    processed = processed.replace(/__ANCHOR_PLACEHOLDER_(\d+)__/g, (_, idx) => anchors[Number(idx)] ?? '');
+
+    // 4b) Ensure links in the modal use the site link color/styling (add classes when missing)
+    processed = processed.replace(/<a\b([^>]*)>/gi, (m) => {
+      if (/\bclass\s*=/.test(m)) {
+        // Append our classes to existing class attribute
+        return m.replace(/class\s*=\s*"([^"]*)"/i, (all, cls) => {
+          if (cls.includes('text-teal-700') || cls.includes('dark:text-teal-400')) return all;
+          return `class="${cls} text-teal-700 dark:text-teal-400 hover:underline"`;
+        });
+      }
+      // No class attribute — add one
+      return m.replace('<a', '<a class="text-teal-700 dark:text-teal-400 hover:underline"');
+    });
+
+    // 5) Split into paragraphs (two or more newlines) and collapse single newlines to spaces
+    const paragraphs = processed
+      .split(/\n{2,}/)
+      .map(p => p.replace(/\n+/g, ' ').trim())
+      .filter(Boolean)
+      .map(p => `<p class="mb-3">${p}</p>`)
+      .join('');
+
+    return paragraphs;
+  }
+
+  function openPubModal(data: PubData) {
+    // Image
+    if (data.img) {
+      imgEl.src = data.img;
+      imgEl.alt = data.title ?? '';
+      imgWrap.style.display = '';
+    } else {
+      imgWrap.style.display = 'none';
+    }
+
+    // Meta line: open-access icon · venue · year
+    const oaIcon = data.openAccess
+      ? '<span class="text-amber-500" title="Open Access"><i class="ai ai-open-access"></i></span>'
+      : '<span class="text-slate-400" title="Closed Access"><i class="ai ai-closed-access"></i></span>';
+    const venueYear = [data.venue, data.year ? String(data.year) : ''].filter(Boolean).join(' · ');
+    metaEl.innerHTML = `${oaIcon} <span>${venueYear}</span>`;
+
+    titleEl.textContent   = data.title   ?? '';
+    authorsEl.textContent = data.authors ?? '';
+
+    // Abstract — prefer explicit abstract field, fall back to description
+    const text = data.abstract || data.description || '';
+    if (text) {
+      abstractEl.innerHTML  = renderAbstract(text);
+      abstractSec.style.display = '';
+    } else {
+      abstractSec.style.display = 'none';
+    }
+
+    // Action buttons / links
+    linksEl.innerHTML = '';
+    const btnBase = 'px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline';
+
+    function addLink(href: string, label: string) {
+      const a = document.createElement('a');
+      a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.className = btnBase; a.textContent = label;
+      linksEl.appendChild(a);
+    }
+
+    if (data.doi)  addLink(data.doi,  'DOI');
+    if (data.pdf)  addLink(data.pdf,  'PDF');
+    if (data.code) addLink(data.code, 'Code');
+
+    if (data.bibtex) {
+      const btn = document.createElement('button');
+      btn.className = btnBase + ' cursor-pointer';
+      btn.textContent = 'Cite';
+      btn.addEventListener('click', () => {
+        navigator.clipboard.writeText(data.bibtex!).then(() => {
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = 'Cite'; }, 2000);
+        });
+      });
+      linksEl.appendChild(btn);
+    }
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    closeBtn.focus();
+  }
+
+  function closePubModal() {
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  closeBtn?.addEventListener('click', closePubModal);
+  modal?.addEventListener('click', (e) => { if (e.target === modal) closePubModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) closePubModal();
+  });
+
+  // Event delegation: click on any [data-pub] element (not on a nested link/button) opens the modal
+  document.addEventListener('click', (e) => {
+    const card = (e.target as Element).closest('[data-pub]');
+    if (!card) return;
+    if ((e.target as Element).closest('a, button')) return;
+    try {
+      const data: PubData = JSON.parse((card as HTMLElement).dataset.pub ?? '{}');
+      openPubModal(data);
+    } catch { /* malformed JSON */ }
+  });
+</script>

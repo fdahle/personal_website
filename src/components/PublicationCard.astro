@@ -5,6 +5,7 @@ interface Props {
   venue: string;
   year: number;
   description?: string;
+  abstract?: string;
   img?: string;
   doi?: string;
   pdf?: string;
@@ -15,10 +16,13 @@ interface Props {
 }
 
 const {
-  title, authors, venue, year, description,
+  title, authors, venue, year, description, abstract,
   img, doi, pdf, code, openAccess = true, bibtex,
   variant = 'horizontal',
 } = Astro.props;
+
+// Serialise pub data for the detail modal (picked up by PublicationModal event delegation)
+const pubData = JSON.stringify({ title, authors, venue, year, description, abstract, img, doi, pdf, code, openAccess, bibtex });
 
 // Deterministic gradient placeholder based on title
 const gradients = [
@@ -31,11 +35,16 @@ const gradients = [
 ];
 const gradientIndex = title.charCodeAt(0) % gradients.length;
 const gradient = gradients[gradientIndex];
+import { SITE_TITLE } from '../consts';
+
+// Bold the site author's name in the authors string for display
+const authorHighlight = `<strong class="font-semibold text-slate-900 dark:text-white">${SITE_TITLE}</strong>`;
+const authorsHtml = authors ? authors.split(SITE_TITLE).join(authorHighlight) : '';
 ---
 
 {variant === 'card' ? (
-  <!-- Vertical card for masonry grid -->
-  <div class="flex flex-col border border-slate-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+  <!-- Vertical card for grid -->
+  <div data-pub={pubData} class="flex flex-col border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow overflow-hidden h-full cursor-pointer select-none">
     <!-- Thumbnail -->
     <div class="relative w-full aspect-video overflow-hidden">
       {img ? (
@@ -45,47 +54,47 @@ const gradient = gradients[gradientIndex];
           <i class="fa-regular fa-image text-4xl text-white/60"></i>
         </div>
       )}
-      <span class="absolute top-2 right-2 bg-white/90 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
+      <span class="absolute top-2 right-2 bg-white/90 dark:bg-slate-700/90 text-slate-600 dark:text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
         {year}
       </span>
     </div>
 
     <!-- Content -->
     <div class="p-5 flex flex-col flex-1">
-      <h3 class="text-sm font-bold text-slate-900 mb-1.5 leading-snug">{title}</h3>
-      <p class="text-xs text-slate-500 mb-2">{authors}</p>
+      <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-1.5 leading-snug">{title}</h3>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mb-2" set:html={authorsHtml}></p>
       <p class="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
         {openAccess
           ? <span class="text-amber-500" title="Open Access"><i class="ai ai-open-access"></i></span>
           : <span class="text-slate-400" title="Closed Access"><i class="ai ai-closed-access"></i></span>
         }
-        <span class="text-teal-700">{venue}</span>
+        <span class="text-teal-700 dark:text-teal-400">{venue}</span>
       </p>
       {description && (
-        <p class="text-xs text-slate-600 leading-relaxed mb-4 line-clamp-4">{description}</p>
+        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">{description}</p>
       )}
       <div class="flex flex-wrap gap-2 text-xs mt-auto pt-2">
         {doi && (
           <a href={doi} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
             DOI
           </a>
         )}
         {pdf && (
           <a href={pdf} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
             PDF
           </a>
         )}
         {code && (
           <a href={code} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
             Code
           </a>
         )}
         {bibtex && (
           <button data-bibtex={bibtex}
-            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors cursor-pointer cite-btn">
+            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer cite-btn">
             Cite
           </button>
         )}
@@ -94,10 +103,10 @@ const gradient = gradients[gradientIndex];
   </div>
 ) : (
   <!-- Horizontal card for list layout -->
-  <div class="flex flex-col sm:flex-row gap-6 p-6 border border-slate-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
+  <div data-pub={pubData} class="flex flex-col sm:flex-row gap-6 p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow cursor-pointer select-none">
     <div class="w-full sm:w-1/4 flex-shrink-0 rounded overflow-hidden">
       {img ? (
-        <img src={img} alt={`Preview of ${title}`} class="w-full h-full object-cover rounded border border-slate-100" />
+        <img src={img} alt={`Preview of ${title}`} class="w-full h-full object-cover rounded border border-slate-100 dark:border-slate-700" />
       ) : (
         <div class={`w-full aspect-video bg-gradient-to-br ${gradient} rounded flex items-center justify-center`}>
           <i class="fa-regular fa-image text-3xl text-white/60"></i>
@@ -105,40 +114,40 @@ const gradient = gradients[gradientIndex];
       )}
     </div>
     <div class="w-full sm:w-3/4 flex flex-col">
-      <h3 class="text-base font-bold text-slate-900 mb-1 leading-snug">{title}</h3>
-      <p class="text-sm text-slate-600 mb-1">{authors} <span class="text-slate-400">({year})</span></p>
+      <h3 class="text-base font-bold text-slate-900 dark:text-white mb-1 leading-snug">{title}</h3>
+      <p class="text-sm text-slate-600 dark:text-slate-400 mb-1"><span set:html={authorsHtml}></span> <span class="text-slate-400 dark:text-slate-500">({year})</span></p>
       <p class="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
         {openAccess
           ? <span class="text-amber-500" title="Open Access"><i class="ai ai-open-access"></i></span>
           : <span class="text-slate-400" title="Closed Access"><i class="ai ai-closed-access"></i></span>
         }
-        <span class="text-teal-700">{venue}</span>
+        <span class="text-teal-700 dark:text-teal-400">{venue}</span>
       </p>
       {description && (
-        <p class="text-sm text-slate-600 leading-relaxed mb-4">{description}</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">{description}</p>
       )}
       <div class="flex flex-wrap gap-2 text-xs mt-auto">
         {doi && (
           <a href={doi} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
             DOI
           </a>
         )}
         {pdf && (
           <a href={pdf} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
             PDF
           </a>
         )}
         {code && (
           <a href={code} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
             Code
           </a>
         )}
         {bibtex && (
           <button data-bibtex={bibtex}
-            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors cursor-pointer cite-btn">
+            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer cite-btn">
             Cite
           </button>
         )}

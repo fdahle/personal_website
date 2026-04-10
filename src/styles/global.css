@@ -1,161 +1,95 @@
-/*
-  The CSS in this style tag is based off of Bear Blog's default CSS.
-  https://github.com/HermanMartinus/bearblog/blob/297026a877bc2ab2b3bdfbd6b9f7961c350917dd/templates/styles/blog/default.css
-  License MIT: https://github.com/HermanMartinus/bearblog/blob/master/LICENSE.md
- */
-
 /* ─── Tailwind CSS v4 entry point ────────────────────────────────────────── */
 @import "tailwindcss";
 
-/* ─── Design tokens ─────────────────────────────────────────────────────── */
-@layer base {
-	:root {
-		--accent: #2337ff;
-		--accent-dark: #000d8a;
-		--black: 15, 18, 25;
-		--gray: 96, 115, 159;
-		--gray-light: 229, 233, 240;
-		--gray-dark: 34, 41, 57;
-		--gray-gradient: rgba(var(--gray-light), 50%), #fff;
-		--box-shadow:
-			0 2px 6px rgba(var(--gray), 25%), 0 8px 24px rgba(var(--gray), 33%),
-			0 16px 32px rgba(var(--gray), 33%);
-	}
+/* ─── Enable class-based dark mode ──────────────────────────────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
 
-	/* Base body styles — Tailwind utility classes on <body> will override these */
+@layer base {
 	body {
-		font-family: var(--font-atkinson);
-		margin: 0;
-		padding: 0;
-		text-align: left;
-		background: linear-gradient(var(--gray-gradient)) no-repeat;
-		background-size: 100% 600px;
+		font-family: var(--font-atkinson), sans-serif;
 		word-wrap: break-word;
 		overflow-wrap: break-word;
-		color: rgb(var(--gray-dark));
-		font-size: 20px;
-		line-height: 1.7;
-	}
-
-	/*
-	  No fixed width here — pages that use Tailwind layout (max-w-7xl etc.)
-	  control their own widths. The blog page overrides this via scoped <style>.
-	*/
-	main {
-		max-width: calc(100% - 2em);
-		margin: auto;
-		padding: 3em 1em;
-	}
-
-	/* Heading defaults — Tailwind text-size utilities on headings will override */
-	h1,
-	h2,
-	h3,
-	h4,
-	h5,
-	h6 {
-		margin: 0 0 0.5rem 0;
-		color: rgb(var(--black));
-		line-height: 1.2;
-	}
-	h1 {
-		font-size: 3.052em;
-	}
-	h2 {
-		font-size: 2.441em;
-	}
-	h3 {
-		font-size: 1.953em;
-	}
-	h4 {
-		font-size: 1.563em;
-	}
-	h5 {
-		font-size: 1.25em;
-	}
-
-	strong,
-	b {
-		font-weight: 700;
-	}
-
-	a {
-		color: var(--accent);
-	}
-	a:hover {
-		color: var(--accent);
-	}
-
-	p {
-		margin-bottom: 1em;
-	}
-	.prose p {
-		margin-bottom: 2em;
-	}
-
-	textarea {
-		width: 100%;
-		font-size: 16px;
-	}
-	input {
-		font-size: 16px;
-	}
-	table {
-		width: 100%;
 	}
 
 	img {
 		max-width: 100%;
 		height: auto;
+	}
+
+	/* ─── Prose: Markdown blog post content ─────────────────────────────── */
+	.prose {
+		color: rgb(51 65 85);    /* slate-700 */
+		line-height: 1.75;
+	}
+	.prose > * + * { margin-top: 1.25em; }
+	.prose a { color: rgb(15 118 110); text-decoration: underline; text-underline-offset: 2px; }
+	.prose a:hover { color: rgb(13 148 136); }
+	.prose strong, .prose b { font-weight: 700; }
+	.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+		color: rgb(15 23 42);    /* slate-900 */
+		font-weight: 700;
+		line-height: 1.25;
+		margin-top: 2em;
+		margin-bottom: 0.5em;
+	}
+	.prose h1 { font-size: 2em; }
+	.prose h2 { font-size: 1.6em; }
+	.prose h3 { font-size: 1.3em; }
+	.prose h4 { font-size: 1.1em; }
+	.prose ul { list-style-type: disc; padding-left: 1.5em; }
+	.prose ol { list-style-type: decimal; padding-left: 1.5em; }
+	.prose li + .prose li { margin-top: 0.3em; }
+	.prose blockquote {
+		border-left: 4px solid rgb(20 184 166);  /* teal-500 */
+		padding-left: 1em;
+		font-style: italic;
+		color: rgb(100 116 139);  /* slate-500 */
+		margin: 1.5em 0;
+	}
+	.prose code {
+		background: rgb(241 245 249);  /* slate-100 */
+		padding: 2px 6px;
+		border-radius: 4px;
+		font-size: 0.875em;
+	}
+	.prose pre {
+		background: rgb(15 23 42);
+		color: rgb(226 232 240);
+		padding: 1.25em;
 		border-radius: 8px;
+		overflow-x: auto;
 	}
-
-	code {
-		padding: 2px 5px;
-		background-color: rgb(var(--gray-light));
-		border-radius: 2px;
-	}
-	pre {
-		padding: 1.5em;
-		border-radius: 8px;
-	}
-	pre > code {
-		all: unset;
-	}
-
-	blockquote {
-		border-left: 4px solid var(--accent);
-		padding: 0 0 0 20px;
-		margin: 0;
-		font-size: 1.333em;
-	}
-
-	hr {
-		border: none;
-		border-top: 1px solid rgb(var(--gray-light));
-	}
-
-	@media (max-width: 720px) {
-		body {
-			font-size: 18px;
-		}
-		main {
-			padding: 1em;
-		}
-	}
+	.prose pre > code { all: unset; font-size: 0.875em; }
+	.prose hr { border: none; border-top: 1px solid rgb(226 232 240); margin: 2em 0; }
+	.prose img { border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+	.prose table { width: 100%; border-collapse: collapse; }
+	.prose th, .prose td { padding: 0.5em 0.75em; border: 1px solid rgb(226 232 240); }
+	.prose th { background: rgb(248 250 252); font-weight: 600; }
 }
 
 /* ─── Utility: screen-reader only ───────────────────────────────────────── */
 .sr-only {
 	border: 0;
 	padding: 0;
-	margin: 0;
-	position: absolute !important;
+	margin: -1px;
+	position: absolute;
 	height: 1px;
 	width: 1px;
 	overflow: hidden;
-	clip: rect(1px 1px 1px 1px);
-	clip: rect(1px, 1px, 1px, 1px);
-	clip-path: inset(50%);
+	clip: rect(0, 0, 0, 0);
 	white-space: nowrap;
 }
+
+/* ─── Prose dark mode ────────────────────────────────────────────────────── */
+.dark .prose                          { color: rgb(203 213 225); }
+.dark .prose a                        { color: rgb(45 212 191); }
+.dark .prose a:hover                  { color: rgb(20 184 166); }
+.dark .prose h1, .dark .prose h2,
+.dark .prose h3, .dark .prose h4,
+.dark .prose h5, .dark .prose h6      { color: rgb(248 250 252); }
+.dark .prose code                     { background: rgb(30 41 59); color: rgb(226 232 240); }
+.dark .prose pre                      { background: rgb(15 23 42); }
+.dark .prose hr                       { border-top-color: rgb(51 65 85); }
+.dark .prose blockquote               { color: rgb(148 163 184); }
+.dark .prose th                       { background: rgb(30 41 59); }
+.dark .prose th, .dark .prose td      { border-color: rgb(51 65 85); }
