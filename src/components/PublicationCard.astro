@@ -1,0 +1,162 @@
+---
+interface Props {
+  title: string;
+  authors: string;
+  venue: string;
+  year: number;
+  description?: string;
+  img?: string;
+  doi?: string;
+  pdf?: string;
+  code?: string;
+  openAccess?: boolean;
+  bibtex?: string;
+  variant?: 'horizontal' | 'card';
+}
+
+const {
+  title, authors, venue, year, description,
+  img, doi, pdf, code, openAccess = true, bibtex,
+  variant = 'horizontal',
+} = Astro.props;
+
+// Deterministic gradient placeholder based on title
+const gradients = [
+  'from-blue-100 to-indigo-200',
+  'from-teal-100 to-cyan-200',
+  'from-violet-100 to-purple-200',
+  'from-amber-100 to-orange-200',
+  'from-rose-100 to-pink-200',
+  'from-emerald-100 to-green-200',
+];
+const gradientIndex = title.charCodeAt(0) % gradients.length;
+const gradient = gradients[gradientIndex];
+---
+
+{variant === 'card' ? (
+  <!-- Vertical card for masonry grid -->
+  <div class="flex flex-col border border-slate-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+    <!-- Thumbnail -->
+    <div class="relative w-full aspect-video overflow-hidden">
+      {img ? (
+        <img src={img} alt={`Preview of ${title}`} class="w-full h-full object-cover" />
+      ) : (
+        <div class={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+          <i class="fa-regular fa-image text-4xl text-white/60"></i>
+        </div>
+      )}
+      <span class="absolute top-2 right-2 bg-white/90 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
+        {year}
+      </span>
+    </div>
+
+    <!-- Content -->
+    <div class="p-5 flex flex-col flex-1">
+      <h3 class="text-sm font-bold text-slate-900 mb-1.5 leading-snug">{title}</h3>
+      <p class="text-xs text-slate-500 mb-2">{authors}</p>
+      <p class="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        {openAccess
+          ? <span class="text-amber-500" title="Open Access"><i class="ai ai-open-access"></i></span>
+          : <span class="text-slate-400" title="Closed Access"><i class="ai ai-closed-access"></i></span>
+        }
+        <span class="text-teal-700">{venue}</span>
+      </p>
+      {description && (
+        <p class="text-xs text-slate-600 leading-relaxed mb-4 line-clamp-4">{description}</p>
+      )}
+      <div class="flex flex-wrap gap-2 text-xs mt-auto pt-2">
+        {doi && (
+          <a href={doi} target="_blank" rel="noopener noreferrer"
+            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            DOI
+          </a>
+        )}
+        {pdf && (
+          <a href={pdf} target="_blank" rel="noopener noreferrer"
+            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            PDF
+          </a>
+        )}
+        {code && (
+          <a href={code} target="_blank" rel="noopener noreferrer"
+            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            Code
+          </a>
+        )}
+        {bibtex && (
+          <button data-bibtex={bibtex}
+            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors cursor-pointer cite-btn">
+            Cite
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+) : (
+  <!-- Horizontal card for list layout -->
+  <div class="flex flex-col sm:flex-row gap-6 p-6 border border-slate-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
+    <div class="w-full sm:w-1/4 flex-shrink-0 rounded overflow-hidden">
+      {img ? (
+        <img src={img} alt={`Preview of ${title}`} class="w-full h-full object-cover rounded border border-slate-100" />
+      ) : (
+        <div class={`w-full aspect-video bg-gradient-to-br ${gradient} rounded flex items-center justify-center`}>
+          <i class="fa-regular fa-image text-3xl text-white/60"></i>
+        </div>
+      )}
+    </div>
+    <div class="w-full sm:w-3/4 flex flex-col">
+      <h3 class="text-base font-bold text-slate-900 mb-1 leading-snug">{title}</h3>
+      <p class="text-sm text-slate-600 mb-1">{authors} <span class="text-slate-400">({year})</span></p>
+      <p class="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        {openAccess
+          ? <span class="text-amber-500" title="Open Access"><i class="ai ai-open-access"></i></span>
+          : <span class="text-slate-400" title="Closed Access"><i class="ai ai-closed-access"></i></span>
+        }
+        <span class="text-teal-700">{venue}</span>
+      </p>
+      {description && (
+        <p class="text-sm text-slate-600 leading-relaxed mb-4">{description}</p>
+      )}
+      <div class="flex flex-wrap gap-2 text-xs mt-auto">
+        {doi && (
+          <a href={doi} target="_blank" rel="noopener noreferrer"
+            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            DOI
+          </a>
+        )}
+        {pdf && (
+          <a href={pdf} target="_blank" rel="noopener noreferrer"
+            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            PDF
+          </a>
+        )}
+        {code && (
+          <a href={code} target="_blank" rel="noopener noreferrer"
+            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors">
+            Code
+          </a>
+        )}
+        {bibtex && (
+          <button data-bibtex={bibtex}
+            class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700 font-medium transition-colors cursor-pointer cite-btn">
+            Cite
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.cite-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const text = btn.getAttribute('data-bibtex');
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent ?? 'Cite';
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+      });
+    });
+  });
+</script>

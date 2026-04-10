@@ -1,0 +1,50 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import PublicationCard from '../../components/PublicationCard.astro';
+import { SITE_TITLE } from '../../consts';
+
+const publications = (await getCollection('publications'))
+  .sort((a, b) => b.data.year - a.data.year);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <BaseHead title={`Publications — ${SITE_TITLE}`} description="Full list of publications by Felix Dahle." />
+  </head>
+  <body class="bg-slate-50 text-slate-800 antialiased">
+    <Header />
+
+    <main class="max-w-7xl mx-auto px-6 py-12">
+      <h1 class="text-3xl font-extrabold text-slate-900 mb-1">Publications</h1>
+      <p class="text-slate-400 text-sm mb-10">{publications.length} publications · sorted by year</p>
+
+      <!-- Masonry grid using CSS columns -->
+      <div class="columns-1 md:columns-2 xl:columns-3 gap-5">
+        {publications.map(pub => (
+          <div class="break-inside-avoid mb-5">
+            <PublicationCard
+              title={pub.data.title}
+              authors={pub.data.authors}
+              venue={pub.data.venue}
+              year={pub.data.year}
+              description={pub.data.description}
+              img={pub.data.img}
+              doi={pub.data.doi}
+              pdf={pub.data.pdf}
+              code={pub.data.code}
+              openAccess={pub.data.openAccess}
+              bibtex={pub.data.bibtex}
+              variant="card"
+            />
+          </div>
+        ))}
+      </div>
+    </main>
+
+    <Footer />
+  </body>
+</html>

@@ -1,49 +1,172 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
-import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import Footer from '../components/Footer.astro';
+import PublicationCard from '../components/PublicationCard.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+
+const featuredPubs = (await getCollection('publications'))
+  .filter(p => p.data.featured)
+  .sort((a, b) => b.data.year - a.data.year);
 ---
 
 <!doctype html>
 <html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
-		<main>
-			<h1>🧑‍🚀 Hello, Astronaut!</h1>
-			<p>
-				Welcome to the official <a href="https://astro.build/">Astro</a> blog starter template. This template
-				serves as a lightweight, minimally-styled starting point for anyone looking to build a personal
-				website, blog, or portfolio with Astro.
-			</p>
-			<p>
-				This template comes with a few integrations already configured in your
-				<code>astro.config.mjs</code> file. You can customize your setup with
-				<a href="https://astro.build/integrations">Astro Integrations</a> to add tools like Tailwind,
-				React, or Vue to your project.
-			</p>
-			<p>Here are a few ideas on how to get started with the template:</p>
-			<ul>
-				<li>Edit this page in <code>src/pages/index.astro</code></li>
-				<li>Edit the site header items in <code>src/components/Header.astro</code></li>
-				<li>Add your name to the footer in <code>src/components/Footer.astro</code></li>
-				<li>Check out the included blog posts in <code>src/content/blog/</code></li>
-				<li>Customize the blog post page layout in <code>src/layouts/BlogPost.astro</code></li>
-			</ul>
-			<p>
-				Have fun! If you get stuck, remember to
-				<a href="https://docs.astro.build/">read the docs</a>
-				or <a href="https://astro.build/chat">join us on Discord</a> to ask questions.
-			</p>
-			<p>
-				Looking for a blog template with a bit more personality? Check out
-				<a href="https://github.com/Charca/astro-blog-template">astro-blog-template</a>
-				by <a href="https://twitter.com/Charca">Maxi Ferreira</a>.
-			</p>
-		</main>
-		<Footer />
-	</body>
+  <head>
+    <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+  </head>
+  <body class="bg-slate-50 text-slate-800 antialiased">
+    <Header />
+
+    <main class="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-16">
+
+      <!-- Sidebar -->
+      <aside class="space-y-8">
+        <div class="flex flex-col items-center lg:items-start text-center lg:text-left">
+
+          <!-- Profile picture (replace /img/dahle.png with your photo) -->
+          <div class="w-44 h-44 rounded-full border-4 border-white shadow-md mb-5 overflow-hidden flex-shrink-0 relative">
+            <div class="absolute inset-0 bg-gradient-to-br from-teal-400 to-slate-600 flex items-center justify-center">
+              <span class="text-white text-4xl font-bold select-none">FD</span>
+            </div>
+            <img
+              src="/img/dahle.png"
+              alt="Felix Dahle"
+              class="absolute inset-0 w-full h-full object-cover"
+              onerror="this.style.display='none'"
+            />
+          </div>
+
+          <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Felix Dahle</h1>
+          <p class="text-base text-teal-700 font-semibold mb-3">Postdoctoral Researcher</p>
+
+          <div class="text-sm text-slate-600 space-y-1 mb-5">
+            <p>
+              <a href="https://www.tudelft.nl/citg/over-faculteit/afdelingen/geoscience-remote-sensing"
+                target="_blank" rel="noopener noreferrer"
+                class="hover:text-teal-700 transition-colors">
+                Geoscience &amp; Remote Sensing Group
+              </a>
+            </p>
+            <p>
+              <a href="https://www.tudelft.nl/en/" target="_blank" rel="noopener noreferrer"
+                class="font-semibold hover:text-teal-700 transition-colors">
+                TU Delft
+              </a>
+            </p>
+          </div>
+
+          <!-- Social icons -->
+          <div class="flex gap-4 text-slate-500 text-xl">
+            <a href="https://github.com/fdahle" target="_blank" rel="noopener noreferrer"
+              class="hover:text-slate-900 transition-colors" title="GitHub">
+              <i class="fa-brands fa-github"></i>
+            </a>
+            <a href="https://www.researchgate.net/profile/Felix-Dahle" target="_blank" rel="noopener noreferrer"
+              class="hover:text-teal-600 transition-colors" title="ResearchGate">
+              <i class="fa-brands fa-researchgate"></i>
+            </a>
+            <a href="https://www.linkedin.com/in/felix-dahle" target="_blank" rel="noopener noreferrer"
+              class="hover:text-blue-600 transition-colors" title="LinkedIn">
+              <i class="fa-brands fa-linkedin"></i>
+            </a>
+            <a href="https://orcid.org/0000-0001-6706-7099" target="_blank" rel="noopener noreferrer"
+              class="hover:text-lime-600 transition-colors" title="ORCID">
+              <i class="fa-brands fa-orcid"></i>
+            </a>
+            <a href="https://www.tudelft.nl/citg/over-faculteit/afdelingen/geoscience-remote-sensing/staff/phd-students/f-felix-dahle"
+              target="_blank" rel="noopener noreferrer"
+              class="hover:text-blue-800 transition-colors" title="TU Delft profile">
+              <i class="fa-solid fa-building-columns"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- Research tags -->
+        <div class="border-t border-slate-200 pt-6">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Research Focus</h3>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-3 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600">Antarctic Glaciers</span>
+            <span class="px-3 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600">Historical DEMs</span>
+            <span class="px-3 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600">Photogrammetry</span>
+            <span class="px-3 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600">Machine Learning</span>
+            <span class="px-3 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600">Computer Vision</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <div class="space-y-14">
+
+        <!-- About / Research description -->
+        <section>
+          <h2 class="text-xl font-bold text-slate-900 mb-4 pb-2 border-b border-slate-200">About</h2>
+          <div class="text-slate-700 leading-relaxed space-y-3 text-sm">
+            <p>
+              I am a Postdoctoral Researcher in the
+              <a href="https://www.tudelft.nl/citg/over-faculteit/afdelingen/geoscience-remote-sensing"
+                target="_blank" rel="noopener noreferrer" class="text-teal-700 hover:underline">
+                Geoscience &amp; Remote Sensing Group
+              </a>
+              at <a href="https://www.tudelft.nl/en/" target="_blank" rel="noopener noreferrer"
+                class="text-teal-700 hover:underline">TU Delft</a>,
+              supervised by
+              <a href="https://www.tudelft.nl/citg/over-faculteit/afdelingen/geoscience-remote-sensing/staff/scientific-staff/dr-ir-b-bert-wouters"
+                target="_blank" rel="noopener noreferrer" class="text-teal-700 hover:underline">Bert Wouters</a>
+              and
+              <a href="http://doris.tudelft.nl/~rlindenbergh/" target="_blank" rel="noopener noreferrer"
+                class="text-teal-700 hover:underline">Roderik Lindenbergh</a>.
+            </p>
+            <p>
+              My research focuses on historical changes of Antarctic glaciers from photogrammetry. I study historical
+              aerial imagery from the Antarctic continent to derive historical digital elevation models (DEMs).
+              These are compared with present-day elevation data to obtain a detailed picture of elevation and mass
+              changes over the past 50 years — helping to understand the long-term response of the Antarctic Peninsula
+              to changing climate conditions and ice shelf thinning.
+            </p>
+            <p>
+              My research interests span Geo-informatics, Computer Vision, Photogrammetry, and Machine Learning.
+              I obtained a Master's degree in
+              <a href="https://www.tudelft.nl/onderwijs/opleidingen/masters/gm/msc-geomatics"
+                target="_blank" rel="noopener noreferrer" class="text-teal-700 hover:underline">Geomatics</a>
+              at TU Delft, during which I worked as a developer for
+              <a href="https://readar.com/en/" target="_blank" rel="noopener noreferrer"
+                class="text-teal-700 hover:underline">Readar</a>.
+            </p>
+          </div>
+        </section>
+
+        <!-- Selected publications -->
+        <section>
+          <div class="flex items-baseline justify-between mb-4 pb-2 border-b border-slate-200">
+            <h2 class="text-xl font-bold text-slate-900">Selected Publications</h2>
+            <a href="/publications" class="text-sm text-teal-700 hover:underline font-medium">
+              All publications &rarr;
+            </a>
+          </div>
+          <div class="space-y-4">
+            {featuredPubs.map(pub => (
+              <PublicationCard
+                title={pub.data.title}
+                authors={pub.data.authors}
+                venue={pub.data.venue}
+                year={pub.data.year}
+                description={pub.data.description}
+                img={pub.data.img}
+                doi={pub.data.doi}
+                pdf={pub.data.pdf}
+                code={pub.data.code}
+                openAccess={pub.data.openAccess}
+                bibtex={pub.data.bibtex}
+              />
+            ))}
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <Footer />
+  </body>
 </html>
