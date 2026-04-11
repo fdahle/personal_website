@@ -1,0 +1,21 @@
+name: Deploy Astro Website
+
+on:
+  push:
+    branches:
+      - main  # This ensures it runs every time you push to 'main'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Execute remote ssh commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: /bin/bash /var/www/fdahle.de/deploy.sh
