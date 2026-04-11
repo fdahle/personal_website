@@ -40,6 +40,8 @@ import { SITE_TITLE } from '../consts';
       <p id="pub-detail-authors" class="text-sm text-slate-500 dark:text-slate-400 mb-5"></p>
 
       <!-- Abstract section (hidden when no text available) -->
+      <div id="pub-detail-tags" class="flex flex-wrap gap-1.5 mb-4"></div>
+
       <div id="pub-detail-abstract-section">
         <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Abstract</h3>
         <div id="pub-detail-abstract" class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-5"></div>
@@ -65,6 +67,7 @@ import { SITE_TITLE } from '../consts';
     code?: string;
     openAccess?: boolean;
     bibtex?: string;
+    tags?: string[];
   }
 
   const modal          = document.getElementById('pub-detail-modal')          as HTMLElement;
@@ -74,6 +77,7 @@ import { SITE_TITLE } from '../consts';
   const metaEl         = document.getElementById('pub-detail-meta')           as HTMLElement;
   const titleEl        = document.getElementById('pub-detail-title')          as HTMLElement;
   const authorsEl      = document.getElementById('pub-detail-authors')        as HTMLElement;
+  const tagsEl         = document.getElementById('pub-detail-tags')           as HTMLElement;
   const abstractSec    = document.getElementById('pub-detail-abstract-section') as HTMLElement;
   const abstractEl     = document.getElementById('pub-detail-abstract')       as HTMLElement;
   const linksEl        = document.getElementById('pub-detail-links')          as HTMLElement;
@@ -147,6 +151,22 @@ import { SITE_TITLE } from '../consts';
     const re = new RegExp(escapeRegExp(authorName), 'g');
     const authorsHtml = (data.authors ?? '').replace(re, `<strong class="font-semibold text-slate-900 dark:text-white">${authorName}</strong>`);
     authorsEl.innerHTML = authorsHtml;
+
+    // Tags
+    tagsEl.innerHTML = '';
+    if (data.tags && data.tags.length > 0) {
+      data.tags.forEach(tag => {
+        const slug = tag.toLowerCase().replace(/\s+/g, '-');
+        const a = document.createElement('a');
+        a.href = `/tags/${slug}`;
+        a.textContent = tag;
+        a.className = 'text-xs px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors no-underline';
+        tagsEl.appendChild(a);
+      });
+      tagsEl.style.display = '';
+    } else {
+      tagsEl.style.display = 'none';
+    }
 
     // Abstract — prefer explicit abstract field, fall back to description
     const text = data.abstract || data.description || '';

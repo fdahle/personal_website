@@ -10,6 +10,7 @@ img: "/img/publications/settlement_pattern.png"
 doi: "https://doi.org/10.1109/JURSE.2019.8809033"
 openAccess: false
 featured: false
+tags: [remote-sensing, settlement-patterns, urban-analysis, socio-economic]
 bibtex: |
   @inproceedings{8809033,
     author    = {Taubenböck, Hannes and Dahle, Felix and Geiß, Christian and Wurm, Michael},

@@ -12,6 +12,7 @@ pdf: "https://www.isprs-ann-photogramm-remote-sens-spatial-inf-sci.net/V-2-2022/
 code: "https://github.com/fdahle/antarctic_segmentation"
 openAccess: true
 featured: false
+tags: [semantic-segmentation, u-net, historical-imagery, deep-learning, antarctica]
 bibtex: |
   @article{isprs-annals-V-2-2022-237-2022,
     author  = {Dahle, F. and Tanke, J. and Wouters, B. and Lindenbergh, R.},

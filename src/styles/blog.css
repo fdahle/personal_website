@@ -1,0 +1,31 @@
+article {
+  counter-reset: figures;
+}
+
+figure {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+figure figcaption {
+  counter-increment: figures;
+  font-size: 0.875rem;
+  color: #666;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+figure figcaption::before {
+  content: "Figure " counter(figures) ": ";
+  font-weight: 600;
+  font-style: normal;
+}
+
+.hint {
+  border-left: 4px solid #3b82f6;
+  background: #eff6ff;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  font-size: 0.925rem;
+}

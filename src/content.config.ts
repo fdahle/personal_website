@@ -11,6 +11,7 @@ const blog = defineCollection({
 			pubDate: z.coerce.date(),
 			updatedDate: z.coerce.date().optional(),
 			heroImage: z.optional(image()),
+			tags: z.array(z.string()).optional(),
 		}),
 });
 
@@ -30,6 +31,7 @@ const publications = defineCollection({
 		openAccess: z.boolean().optional(),
 		featured: z.boolean().optional(),
 		bibtex: z.string().optional(),
+		tags: z.array(z.string()).optional(),
 	}),
 });
 

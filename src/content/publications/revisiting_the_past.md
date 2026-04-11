@@ -16,6 +16,7 @@ pdf: "https://www.sciencedirect.com/science/article/pii/S2667393223000273/pdfft?
 code: "https://github.com/fdahle/antarctic_segmentation"
 openAccess: true
 featured: true
+tags: [semantic-segmentation, u-net, historical-imagery, deep-learning, antarctica]
 bibtex: |
   @article{DAHLE2024100056,
     title   = {Revisiting the Past: A comparative study for semantic segmentation of historical images of Adelaide Island using U-nets},

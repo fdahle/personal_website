@@ -14,6 +14,7 @@ pdf: "https://www.tandfonline.com/doi/epdf/10.1080/17538947.2024.2406384"
 code: "https://github.com/fdahle/hist_georef"
 openAccess: true
 featured: true
+tags: [historical-imagery, georeferencing, computer-vision, antarctica]
 bibtex: |
   @article{dahle_georef_2024,
     author  = {Felix Dahle and Roderik Lindenbergh and Bert Wouters},

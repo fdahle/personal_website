@@ -13,6 +13,7 @@ pdf: "https://www.isprs-ann-photogramm-remote-sens-spatial-inf-sci.net/VI-4-W1-2
 code: "https://github.com/cityjson/ninja"
 openAccess: true
 featured: false
+tags: [cityjson, citygml, web, 3d-visualization]
 bibtex: |
   @article{isprs-annals-VI-4-W1-2020-167-2020,
     author  = {Vitalis, S. and Labetski, A. and Boersma, F. and Dahle, F. and Li, X. and Arroyo Ohori, K. and Ledoux, H. and Stoter, J.},

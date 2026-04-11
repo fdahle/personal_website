@@ -1,0 +1,145 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import PublicationCard from '../../components/PublicationCard.astro';
+import PublicationModal from '../../components/PublicationModal.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import { SITE_TITLE } from '../../consts';
+
+export async function getStaticPaths() {
+  const [publications, posts] = await Promise.all([
+    getCollection('publications'),
+    getCollection('blog'),
+  ]);
+
+  // Collect all unique tag slugs and map them back to their canonical display name
+  const tagMap = new Map<string, string>(); // slug -> display name (first seen)
+
+  function addTags(tags: string[] | undefined) {
+    tags?.forEach(tag => {
+      const slug = tag.toLowerCase().replace(/\s+/g, '-');
+      if (!tagMap.has(slug)) tagMap.set(slug, tag);
+    });
+  }
+
+  publications.forEach(pub => addTags(pub.data.tags));
+  posts.forEach(post => addTags(post.data.tags));
+
+  return Array.from(tagMap.entries()).map(([slug, displayName]) => ({
+    params: { tag: slug },
+    props: { displayName, publications, posts },
+  }));
+}
+
+const { tag } = Astro.params;
+const { displayName, publications, posts } = Astro.props;
+
+function matchesTag(tags: string[] | undefined) {
+  return tags?.some(t => t.toLowerCase().replace(/\s+/g, '-') === tag) ?? false;
+}
+
+const matchedPubs = publications.filter(p => matchesTag(p.data.tags))
+  .sort((a, b) => b.data.year - a.data.year);
+
+const matchedPosts = posts.filter(p => matchesTag(p.data.tags))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <BaseHead
+      title={`#${displayName} — ${SITE_TITLE}`}
+      description={`Publications and blog posts tagged "${displayName}".`}
+    />
+  </head>
+  <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 antialiased">
+    <Header />
+
+    <main class="max-w-4xl mx-auto px-6 py-12">
+      <div class="mb-10">
+        <p class="text-sm text-slate-400 dark:text-slate-500 mb-1">Tag</p>
+        <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white">
+          #{displayName}
+        </h1>
+        <p class="text-slate-400 dark:text-slate-500 text-sm mt-1">
+          {matchedPubs.length + matchedPosts.length} result{matchedPubs.length + matchedPosts.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+
+      {matchedPubs.length > 0 && (
+        <section class="mb-12">
+          <h2 class="text-lg font-bold text-slate-700 dark:text-slate-300 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+            Publications
+          </h2>
+          <div class="space-y-4">
+            {matchedPubs.map(pub => (
+              <PublicationCard
+                title={pub.data.title}
+                authors={pub.data.authors}
+                venue={pub.data.venue}
+                year={pub.data.year}
+                description={pub.data.description}
+                abstract={pub.data.abstract}
+                img={pub.data.img}
+                doi={pub.data.doi}
+                pdf={pub.data.pdf}
+                code={pub.data.code}
+                openAccess={pub.data.openAccess}
+                bibtex={pub.data.bibtex}
+                tags={pub.data.tags}
+                variant="horizontal"
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {matchedPosts.length > 0 && (
+        <section>
+          <h2 class="text-lg font-bold text-slate-700 dark:text-slate-300 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+            Blog Posts
+          </h2>
+          <ul class="space-y-4 list-none p-0 m-0">
+            {matchedPosts.map(post => (
+              <li>
+                <a
+                  href={`/blog/${post.id}/`}
+                  class="group flex flex-col sm:flex-row gap-4 p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow no-underline text-inherit"
+                >
+                  <div class="flex flex-col justify-center">
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mb-1">
+                      <FormattedDate date={post.data.pubDate} />
+                    </p>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white mb-1 group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors leading-snug">
+                      {post.data.title}
+                    </h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{post.data.description}</p>
+                    {post.data.tags && post.data.tags.length > 0 && (
+                      <div class="flex flex-wrap gap-1.5 mt-2">
+                        {post.data.tags.map(t => (
+                          <span class="text-xs px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-800">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {matchedPubs.length === 0 && matchedPosts.length === 0 && (
+        <p class="text-slate-400 dark:text-slate-500">No content found for this tag.</p>
+      )}
+    </main>
+
+    <PublicationModal />
+    <Footer />
+  </body>
+</html>

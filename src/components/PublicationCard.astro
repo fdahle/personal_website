@@ -12,17 +12,18 @@ interface Props {
   code?: string;
   openAccess?: boolean;
   bibtex?: string;
+  tags?: string[];
   variant?: 'horizontal' | 'card';
 }
 
 const {
   title, authors, venue, year, description, abstract,
-  img, doi, pdf, code, openAccess = true, bibtex,
+  img, doi, pdf, code, openAccess = true, bibtex, tags,
   variant = 'horizontal',
 } = Astro.props;
 
 // Serialise pub data for the detail modal (picked up by PublicationModal event delegation)
-const pubData = JSON.stringify({ title, authors, venue, year, description, abstract, img, doi, pdf, code, openAccess, bibtex });
+const pubData = JSON.stringify({ title, authors, venue, year, description, abstract, img, doi, pdf, code, openAccess, bibtex, tags });
 
 // Deterministic gradient placeholder based on title
 const gradients = [
@@ -70,6 +71,7 @@ const authorsHtml = authors ? authors.split(SITE_TITLE).join(authorHighlight) : 
         }
         <span class="text-teal-700 dark:text-teal-400">{venue}</span>
       </p>
+      <!-- Tags are intentionally not shown in overview cards; they appear in the modal only -->
       {description && (
         <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">{description}</p>
       )}
@@ -123,6 +125,7 @@ const authorsHtml = authors ? authors.split(SITE_TITLE).join(authorHighlight) : 
         }
         <span class="text-teal-700 dark:text-teal-400">{venue}</span>
       </p>
+      <!-- Tags are intentionally not shown in overview cards; they appear in the modal only -->
       {description && (
         <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">{description}</p>
       )}

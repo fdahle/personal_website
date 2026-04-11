@@ -13,6 +13,7 @@ doi: "https://doi.org/10.5194/isprs-archives-XLIII-B2-2021-457-2021"
 pdf: "https://www.int-arch-photogramm-remote-sens-spatial-inf-sci.net/XLIII-B2-2021/457/2021/isprs-archives-XLIII-B2-2021-457-2021.pdf"
 openAccess: true
 featured: false
+tags: [remote-sensing, change-detection, machine-learning]
 bibtex: |
   @article{isprs-archives-XLIII-B2-2021-457-2021,
     author  = {Dahle, F. and Arroyo Ohori, K. and Agugiaro, G. and Briels, S.},

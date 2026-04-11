@@ -74,6 +74,7 @@ const publications = (await getCollection('publications'))
                 openAccess={pub.data.openAccess}
                 bibtex={pub.data.bibtex}
                 abstract={pub.data.abstract}
+                tags={pub.data.tags}
                 variant="card"
               />
             </div>

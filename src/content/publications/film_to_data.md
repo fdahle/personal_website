@@ -29,6 +29,7 @@ pdf: "https://link.springer.com/content/pdf/10.1007/s41064-025-00357-8.pdf"
 code: "https://github.com/fdahle/hist_meta_extraction"
 openAccess: true
 featured: false
+tags: [historical-imagery, computer-vision, photogrammetry, metadata]
 bibtex: |
   @article{dahle_film_to_data,
     title = "From Film to Data: Automating Meta-Feature Extraction in Historical Aerial Imagery",
