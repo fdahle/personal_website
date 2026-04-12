@@ -13,17 +13,18 @@ interface Props {
   openAccess?: boolean;
   bibtex?: string;
   tags?: string[];
+  slug?: string;
   variant?: 'horizontal' | 'card';
 }
 
 const {
   title, authors, venue, year, description, abstract,
-  img, doi, pdf, code, openAccess = true, bibtex, tags,
+  img, doi, pdf, code, openAccess = true, bibtex, tags, slug,
   variant = 'horizontal',
 } = Astro.props;
 
 // Serialise pub data for the detail modal (picked up by PublicationModal event delegation)
-const pubData = JSON.stringify({ title, authors, venue, year, description, abstract, img, doi, pdf, code, openAccess, bibtex, tags });
+const pubData = JSON.stringify({ title, authors, venue, year, description, abstract, img, doi, pdf, code, openAccess, bibtex, tags, slug });
 
 // Deterministic gradient placeholder based on title
 const gradients = [
@@ -75,31 +76,42 @@ const authorsHtml = authors ? authors.split(SITE_TITLE).join(authorHighlight) : 
       {description && (
         <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">{description}</p>
       )}
-      <div class="flex flex-wrap gap-2 text-xs mt-auto pt-2">
-        {doi && (
-          <a href={doi} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
-            DOI
-          </a>
-        )}
-        {pdf && (
-          <a href={pdf} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
-            PDF
-          </a>
-        )}
-        {code && (
-          <a href={code} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
-            Code
-          </a>
-        )}
-        {bibtex && (
-          <button data-bibtex={bibtex}
-            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer cite-btn">
-            Cite
+      <div class="flex items-center gap-2 text-xs mt-auto pt-2">
+        {slug && (
+          <button data-share-slug={slug}
+            class="share-btn px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer flex items-center gap-1.5">
+            <i class="fa-solid fa-share-nodes"></i> Share
           </button>
         )}
+        {slug && (doi || pdf || code || bibtex) && (
+          <span class="w-px h-5 bg-slate-200 dark:bg-slate-700" aria-hidden="true"></span>
+        )}
+        <div class="flex flex-wrap gap-2">
+          {doi && (
+            <a href={doi} target="_blank" rel="noopener noreferrer"
+              class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
+              DOI
+            </a>
+          )}
+          {pdf && (
+            <a href={pdf} target="_blank" rel="noopener noreferrer"
+              class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
+              PDF
+            </a>
+          )}
+          {code && (
+            <a href={code} target="_blank" rel="noopener noreferrer"
+              class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
+              Code
+            </a>
+          )}
+          {bibtex && (
+            <button data-bibtex={bibtex}
+              class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer cite-btn">
+              Cite
+            </button>
+          )}
+        </div>
       </div>
     </div>
   </div>
@@ -129,31 +141,42 @@ const authorsHtml = authors ? authors.split(SITE_TITLE).join(authorHighlight) : 
       {description && (
         <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">{description}</p>
       )}
-      <div class="flex flex-wrap gap-2 text-xs mt-auto">
-        {doi && (
-          <a href={doi} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
-            DOI
-          </a>
-        )}
-        {pdf && (
-          <a href={pdf} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
-            PDF
-          </a>
-        )}
-        {code && (
-          <a href={code} target="_blank" rel="noopener noreferrer"
-            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
-            Code
-          </a>
-        )}
-        {bibtex && (
-          <button data-bibtex={bibtex}
-            class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer cite-btn">
-            Cite
+      <div class="flex items-center gap-2 text-xs mt-auto pt-2">
+        {slug && (
+          <button data-share-slug={slug}
+            class="share-btn px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer flex items-center gap-1.5">
+            <i class="fa-solid fa-share-nodes"></i> Share
           </button>
         )}
+        {slug && (doi || pdf || code || bibtex) && (
+          <span class="w-px h-5 bg-slate-200 dark:bg-slate-700" aria-hidden="true"></span>
+        )}
+        <div class="flex flex-wrap gap-2">
+          {doi && (
+            <a href={doi} target="_blank" rel="noopener noreferrer"
+              class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
+              DOI
+            </a>
+          )}
+          {pdf && (
+            <a href={pdf} target="_blank" rel="noopener noreferrer"
+              class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
+              PDF
+            </a>
+          )}
+          {code && (
+            <a href={code} target="_blank" rel="noopener noreferrer"
+              class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors no-underline">
+              Code
+            </a>
+          )}
+          {bibtex && (
+            <button data-bibtex={bibtex}
+              class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer cite-btn">
+              Cite
+            </button>
+          )}
+        </div>
       </div>
     </div>
   </div>
@@ -164,11 +187,7 @@ const authorsHtml = authors ? authors.split(SITE_TITLE).join(authorHighlight) : 
     btn.addEventListener('click', () => {
       const text = btn.getAttribute('data-bibtex');
       if (!text) return;
-      navigator.clipboard.writeText(text).then(() => {
-        const orig = btn.textContent ?? 'Cite';
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = orig; }, 2000);
-      });
+      document.dispatchEvent(new CustomEvent('open-cite-modal', { detail: text }));
     });
   });
 </script>

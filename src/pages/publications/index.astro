@@ -56,6 +56,7 @@ const publications = (await getCollection('publications'))
           const firstAuthorLastName = pub.data.authors.split(',')[0].trim().split(' ').pop()?.toLowerCase() ?? '';
           return (
             <div
+              id={pub.id}
               data-year={pub.data.year}
               data-author={firstAuthorLastName}
               data-venue={pub.data.venue.toLowerCase()}
@@ -75,6 +76,7 @@ const publications = (await getCollection('publications'))
                 bibtex={pub.data.bibtex}
                 abstract={pub.data.abstract}
                 tags={pub.data.tags}
+                slug={pub.id}
                 variant="card"
               />
             </div>

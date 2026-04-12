@@ -60,6 +60,16 @@ const bibtex = `@misc{${citeKey},
               ))}
             </div>
           )}
+          <div class="flex justify-center mt-4">
+            <button
+              id="blog-share-btn"
+              data-title={title}
+              data-url={postUrl}
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
+            >
+              <i class="fa-solid fa-share-nodes"></i> Share
+            </button>
+          </div>
         </header>
         <div class="prose">
           <slot />
@@ -95,5 +105,23 @@ const bibtex = `@misc{${citeKey},
     setTimeout(() => {
       btn.innerHTML = '<i class="fa-regular fa-copy text-sm"></i>';
     }, 1500);
+  });
+
+  const shareBtn = document.getElementById('blog-share-btn') as HTMLButtonElement | null;
+  shareBtn?.addEventListener('click', async () => {
+    const title = shareBtn.dataset.title ?? '';
+    const url   = shareBtn.dataset.url   ?? window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+      } catch (err) {
+        if ((err as DOMException).name !== 'AbortError') console.warn(err);
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      const orig = shareBtn.innerHTML;
+      shareBtn.innerHTML = 'Copied!';
+      setTimeout(() => { shareBtn.innerHTML = orig; }, 2000);
+    }
   });
 </script>

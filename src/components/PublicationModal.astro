@@ -2,6 +2,43 @@
 import { SITE_TITLE } from '../consts';
 ---
 
+<!-- BibTeX cite modal -->
+<div
+  id="pub-cite-modal"
+  class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm hidden py-8 px-4"
+  role="dialog"
+  aria-modal="true"
+  aria-label="BibTeX citation"
+>
+  <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-xl w-full relative">
+    <button
+      id="pub-cite-close"
+      class="absolute top-3 right-3 z-10 p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+      aria-label="Close"
+    >
+      <i class="fa-solid fa-xmark text-lg"></i>
+    </button>
+    <div class="p-6">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">BibTeX</h3>
+      <pre id="pub-cite-content" class="text-xs font-mono bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 whitespace-pre overflow-x-auto text-slate-700 dark:text-slate-300 leading-relaxed mb-4"></pre>
+      <div class="flex gap-2 justify-end text-xs">
+        <button
+          id="pub-cite-copy"
+          class="px-4 py-1.5 rounded-full bg-teal-700 hover:bg-teal-600 text-white font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+        >
+          <i class="fa-regular fa-copy"></i> Copy
+        </button>
+        <button
+          id="pub-cite-close-btn"
+          class="px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Publication detail modal — include once per page that uses PublicationCard -->
 <div
   id="pub-detail-modal"
@@ -68,6 +105,61 @@ import { SITE_TITLE } from '../consts';
     openAccess?: boolean;
     bibtex?: string;
     tags?: string[];
+  }
+
+  const SHARE_ICON = '<i class="fa-solid fa-share-nodes"></i> Share';
+
+  // ── Cite modal ──────────────────────────────────────────────────────────────
+  const citeModal    = document.getElementById('pub-cite-modal')    as HTMLElement;
+  const citeContent  = document.getElementById('pub-cite-content')  as HTMLElement;
+  const citeCopyBtn  = document.getElementById('pub-cite-copy')     as HTMLButtonElement;
+  const citeCloseBtn = document.getElementById('pub-cite-close')    as HTMLButtonElement;
+  const citeCloseBtnAlt = document.getElementById('pub-cite-close-btn') as HTMLButtonElement;
+
+  function openCiteModal(bibtex: string) {
+    citeContent.textContent = bibtex;
+    citeModal.classList.remove('hidden');
+  }
+
+  function closeCiteModal() {
+    citeModal.classList.add('hidden');
+  }
+
+  citeCopyBtn?.addEventListener('click', () => {
+    navigator.clipboard.writeText(citeContent.textContent ?? '').then(() => {
+      const orig = citeCopyBtn.innerHTML;
+      citeCopyBtn.innerHTML = 'Copied!';
+      setTimeout(() => { citeCopyBtn.innerHTML = orig; }, 2000);
+    });
+  });
+  citeCloseBtn?.addEventListener('click', closeCiteModal);
+  citeCloseBtnAlt?.addEventListener('click', closeCiteModal);
+  citeModal?.addEventListener('click', (e) => { if (e.target === citeModal) closeCiteModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && citeModal && !citeModal.classList.contains('hidden')) closeCiteModal();
+  });
+  // ────────────────────────────────────────────────────────────────────────────
+
+  // Card-level cite buttons dispatch this event (PublicationCard.astro)
+  document.addEventListener('open-cite-modal', (e) => {
+    openCiteModal((e as CustomEvent<string>).detail);
+  });
+
+  async function sharePub(url: string, title: string, btn: HTMLElement) {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+      } catch (err) {
+        // User cancelled or share failed — silently ignore
+        if ((err as DOMException).name !== 'AbortError') console.warn(err);
+      }
+    } else {
+      // Fallback: copy to clipboard
+      await navigator.clipboard.writeText(url);
+      const original = btn.innerHTML;
+      btn.innerHTML = 'Copied!';
+      setTimeout(() => { btn.innerHTML = original; }, 2000);
+    }
   }
 
   const modal          = document.getElementById('pub-detail-modal')          as HTMLElement;
@@ -188,6 +280,23 @@ import { SITE_TITLE } from '../consts';
       linksEl.appendChild(a);
     }
 
+    // Share button (leftmost)
+    if (data.slug) {
+      const shareBtn = document.createElement('button');
+      shareBtn.className = btnBase + ' cursor-pointer inline-flex items-center gap-1.5';
+      shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Share';
+      shareBtn.title = 'Share';
+      shareBtn.addEventListener('click', () => {
+        const url = window.location.origin + '/publications#' + data.slug;
+        sharePub(url, data.title ?? '', shareBtn);
+      });
+      linksEl.appendChild(shareBtn);
+      const sep = document.createElement('span');
+      sep.className = 'w-px h-5 bg-slate-200 dark:bg-slate-700';
+      sep.setAttribute('aria-hidden', 'true');
+      linksEl.appendChild(sep);
+    }
+
     if (data.doi)  addLink(data.doi,  'DOI');
     if (data.pdf)  addLink(data.pdf,  'PDF');
     if (data.code) addLink(data.code, 'Code');
@@ -196,13 +305,13 @@ import { SITE_TITLE } from '../consts';
       const btn = document.createElement('button');
       btn.className = btnBase + ' cursor-pointer';
       btn.textContent = 'Cite';
-      btn.addEventListener('click', () => {
-        navigator.clipboard.writeText(data.bibtex!).then(() => {
-          btn.textContent = 'Copied!';
-          setTimeout(() => { btn.textContent = 'Cite'; }, 2000);
-        });
-      });
+      btn.addEventListener('click', () => openCiteModal(data.bibtex!));
       linksEl.appendChild(btn);
+    }
+
+    // Update URL hash
+    if (data.slug) {
+      history.replaceState(null, '', '#' + data.slug);
     }
 
     modal.classList.remove('hidden');
@@ -213,6 +322,7 @@ import { SITE_TITLE } from '../consts';
   function closePubModal() {
     modal.classList.add('hidden');
     document.body.style.overflow = '';
+    history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 
   closeBtn?.addEventListener('click', closePubModal);
@@ -231,4 +341,33 @@ import { SITE_TITLE } from '../consts';
       openPubModal(data);
     } catch { /* malformed JSON */ }
   });
+
+  // Share-button clicks on cards
+  document.addEventListener('click', (e) => {
+    const shareBtn = (e.target as Element).closest('.share-btn') as HTMLElement | null;
+    if (!shareBtn) return;
+    const slug = shareBtn.dataset.shareSlug;
+    if (!slug) return;
+    const url = window.location.origin + '/publications#' + slug;
+    // Try to get the publication title from the card's data-pub
+    let title = '';
+    try {
+      const wrapper = shareBtn.closest('[data-pub]') as HTMLElement | null;
+      if (wrapper?.dataset.pub) title = JSON.parse(wrapper.dataset.pub).title ?? '';
+    } catch { /* ignore */ }
+    sharePub(url, title, shareBtn);
+  });
+
+  // Auto-open modal when page loads with a hash that matches a publication slug
+  const initialHash = window.location.hash.slice(1);
+  if (initialHash) {
+    const wrapper = document.getElementById(initialHash);
+    const card = wrapper?.querySelector('[data-pub]') as HTMLElement | null;
+    if (card?.dataset.pub) {
+      try {
+        const data: PubData = JSON.parse(card.dataset.pub);
+        openPubModal(data);
+      } catch { /* malformed JSON */ }
+    }
+  }
 </script>
