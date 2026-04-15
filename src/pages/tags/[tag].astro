@@ -76,22 +76,25 @@ const matchedPosts = posts.filter(p => matchesTag(p.data.tags))
           </h2>
           <div class="space-y-4">
             {matchedPubs.map(pub => (
-              <PublicationCard
-                title={pub.data.title}
-                authors={pub.data.authors}
-                venue={pub.data.venue}
-                year={pub.data.year}
-                description={pub.data.description}
-                abstract={pub.data.abstract}
-                img={pub.data.img}
-                doi={pub.data.doi}
-                pdf={pub.data.pdf}
-                code={pub.data.code}
-                openAccess={pub.data.openAccess}
-                bibtex={pub.data.bibtex}
-                tags={pub.data.tags}
-                variant="horizontal"
-              />
+              <div id={pub.id}>
+                <PublicationCard
+                  title={pub.data.title}
+                  authors={pub.data.authors}
+                  venue={pub.data.venue}
+                  year={pub.data.year}
+                  description={pub.data.description}
+                  abstract={pub.data.abstract}
+                  img={pub.data.img}
+                  doi={pub.data.doi}
+                  pdf={pub.data.pdf}
+                  code={pub.data.code}
+                  openAccess={pub.data.openAccess}
+                  bibtex={pub.data.bibtex}
+                  tags={pub.data.tags}
+                  slug={pub.id}
+                  variant="horizontal"
+                />
+              </div>
             ))}
           </div>
         </section>

@@ -6,6 +6,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import mePhoto from '../assets/img/me.jpg';
 import PublicationCard from '../components/PublicationCard.astro';
+import ProjectCard from '../components/ProjectCard.astro';
 import PublicationModal from '../components/PublicationModal.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 
@@ -14,6 +15,12 @@ const featuredPubs = (await getCollection('publications'))
   .sort((a, b) => b.data.year - a.data.year);
 
 const allPubCount = (await getCollection('publications')).length;
+const projects = (await getCollection('projects')).sort((a, b) => {
+  const oa = (a.data.order ?? Number.POSITIVE_INFINITY) as number;
+  const ob = (b.data.order ?? Number.POSITIVE_INFINITY) as number;
+  if (oa !== ob) return oa - ob;
+  return (a.data.title ?? '').localeCompare(b.data.title ?? '');
+});
 ---
 
 <!doctype html>
@@ -225,6 +232,28 @@ const allPubCount = (await getCollection('publications')).length;
         </div>
       </section>
       )}
+
+      <!-- Projects -->
+      <section>
+        <div class="flex items-baseline mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white">Projects</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {projects.slice(0, 3).map(project => (
+            <ProjectCard
+              title={project.data.title}
+              description={project.data.description}
+              link={project.data.link}
+              repo={project.data.repo}
+              img={project.data.img}
+              slug={project.slug}
+              tags={project.data.tags}
+              wip={project.data.wip}
+            />
+          ))}
+        </div>
+      </section>
 
     </main>
 
