@@ -4,7 +4,7 @@ description: "A U-Net-based deep learning pipeline for automated detection of ro
 img: "rockmask.png"
 order: 3
 wip: false
-link: "https://example.com/project-three"
+link: ""
 repo: "https://github.com/fdahle/sfm-hist-rocks"
 tags:
   - Python
