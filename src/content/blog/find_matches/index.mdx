@@ -1,0 +1,151 @@
+---
+title: "Beating OOM: High-Res Image Matching with Tiled LightGlue"
+description: "How to match massive images without blowing up your GPU's VRAM. Exploring two custom approaches to feature matching: a two-stage extract-and-match pipeline, and a direct one-stage tie-point detector."
+pubDate: 2026-04-21
+tags: ["photogrammetry", "sfm", "lightglue", "superpoint", "computer-vision"]
+published: False
+---
+import { Image } from 'astro:assets';
+import tiling_overview from '../../../assets/img/placeholder.png';
+import matched_results from '../../../assets/img/placeholder.png';
+
+In my last post, I showed you how to take a set of pairwise feature matches and weave them into a globally consistent Bundler `.out` file for Agisoft Metashape. 
+
+But I glossed over a massive hurdle: **how do you actually get those high-quality matches when your drone or camera images are 40+ megapixels?**
+
+If you just toss two 8K images into a modern deep learning matcher like SuperGlue or LightGlue, your GPU will instantly throw an Out-Of-Memory (OOM) error. The attention mechanisms in these models scale quadratically with the number of pixels/features. 
+
+To solve this, we have to chop the images up. Today, I'll walk through my custom pipeline for handling massive images, covering two different architectural approaches I built: a **Two-Stage** (Extract then Match) approach, and a **One-Stage** (Direct Tie-Point) approach.
+
+## Approach 1: The Two-Stage "Extract & Match" Pipeline
+
+This is the classic approach. You find all the interesting points in Image A, find all the points in Image B, and then compare the two sets.
+This has the advantage that if you match the same image multiple times (e.g. Image A to Image B, then Image A to Image C), you only have to extract the keypoints from Image A once. You can reuse those descriptors for every match and they are always identical, which is good for consistency.
+
+### Find key points
+
+**Phase 1: Preparation**<br />
+The image is converted to 2D grayscale and checked to ensure it meets the minimum size requirements for the neural network.
+
+**Phase 2: Tiling**<br />
+To handle large images safely, the image is mathematically divided into a grid of overlapping square patches (tiles).
+
+**Phase 3: Extraction**<br />
+Tile Extraction: The script loops through every tile and feeds it into the SuperPoint model. The model outputs the keypoint coordinates, confidence scores, and descriptors. The local tile coordinates are then shifted to reflect their true position on the full global image.
+
+**Phase 4: Global Merge**<br />
+Global Merge: The results from every individual tile are concatenated into three master lists (all keypoints, all scores, all descriptors).
+
+**Phase 5: Cleanup**<br />
+Spatial Deduplication: Because the tiles overlap, the same physical landmark might be detected twice. The script uses a KDTree to search for points that are extremely close together (within a 2-pixel radius) and deletes the duplicate that has the lower confidence score.
+
+```python
+from scipy.spatial import cKDTree
+
+# 1. Sort by score descending to prioritize high-confidence points
+sort_idx = np.argsort(scores_global)[::-1]
+kpts_sorted = kpts_global[sort_idx]
+scores_sorted = scores_global[sort_idx]
+
+# 2. Build KDTree for efficient radius searches
+tree = cKDTree(kpts_sorted)
+suppression_radius = 2.0
+
+# query_pairs finds all pairs (i, j) within the radius where i < j.
+# Because we sorted by score, 'i' is always the better point. 
+# We can safely drop 'j' every time.
+pairs = tree.query_pairs(suppression_radius)
+
+drop_mask = np.zeros(len(kpts_sorted), dtype=bool)
+for i, j in pairs:
+    drop_mask[j] = True
+
+final_kpts = kpts_sorted[~drop_mask]
+```
+**Phase 6: Capping**<br />
+Global Capping: If the total number of extracted points exceeds the allowed maximum, the script sorts them by their confidence score and slices the list to keep only the absolute best ones.
+
+### Match key points
+
+The matching happens in several phases
+
+**Phase 1: Global Baseline Matching**<br />
+The script takes a subset of the highest-scoring keypoints from both images and attempts a fast, global match. This establishes a rough baseline of how the two images relate to one another.
+
+**Phase 2: Tile Setup**<br />
+The script identifies the larger of the two images is identified as the "base" image and mathematically divides it into tiles.
+
+**Phase 3: Targeted Cropping**<br />
+Instead of blindly matching everything, it uses the initial baseline matches to calculate where a base tile "lands" in the second image. It draws a localized bounding box around that area in the second image to create a paired search zone.
+
+**Phase 4: Batched Inference**<br />
+The script groups these paired zones into batches and sends them to the GPU. LightGlue analyzes these smaller, targeted areas to find dense, high-quality matches. If the GPU runs out of memory, the script catches the error and safely processes them one at a time.
+
+**Phase 5: Merging**<br />
+All the matches discovered across all the localized batches are collected and combined with the initial baseline matches.
+
+**Phase 6: Deduplication**<br />
+The script enforces a strict one-to-one mapping rule. If a point in Image 1 is accidentally matched to multiple different points in Image 2, only the match with the highest confidence score is kept. A final spatial cleanup ensures no duplicate matches are sitting on top of each other.
+
+## Approach 2: The One-Stage "Direct Tie-Point" 
+
+Works very similar, but in one step instead of 2 
+
+**Phase 1: Global Rotation Check*<br />
+Do a check in very low resolution to have an indication if the images are even matchable.
+
+**Phase 2: Global Homography**<br />
+It takes the matches found during the low-res rotation check, scales their coordinates back up to the full-resolution image size, and calculates a global "Homography" (a mathematical mapping that roughly describes how the flat surface of Image 1 translates to Image 2).
+
+**Phase 3: Targeted Tile Projection**<br />
+Smart Tile Projection:  Instead of randomly dividing both images into grids and checking every tile against every other tile (which is slow), the script uses a targeted approach. It divides Image 1 into overlapping square tiles. For each tile, it uses that global Homography from Step 2 to mathematically predict exactly where the center of that tile should appear in Image 2.
+
+**Phase 4:**<br />
+Targeted Cropping: It then draws a bounding box in Image 2 around that projected center point. Now, it has a specifically paired "Tile 1" and "Tile 2" that are highly likely to overlap.
+
+**Phase 5: Dense Tile Matching**<br />
+Initial Tile Verification: For every predicted tile pair, it runs SuperPoint and LightGlue again. If they find enough baseline matches, the tile pair is deemed valid and moves to the heavy-duty matcher. 6. The RoMa Subprocess: This is where roma_worker.py comes in. RoMa is a very powerful (but memory-hungry) matching model. To prevent CUDA library conflicts with the main software (Metashape) and to manage GPU memory safely, RoMa is isolated in its own separate background process. The main script sends the valid tile pairs to this worker, which computes dense, high-certainty matches and sends the coordinates back.
+
+**Phase 6: Cleanup**<br />
+Local Cleanup: The RoMa matches are filtered strictly using a local geometric check to ensure quality, and then spatially subsampled so they don't clump up in one spot on the tile. The coordinates are then shifted from their local tile positions back to the global full-image coordinates.
+
+**Phase 7: Global Merge and Cleanup**<br />
+Deduplication: Once all tiles are processed, all the matches are dumped into one massive list. Because the tiles overlapped, there will be duplicate points. The script uses a KDTree to find points that are sitting virtually on top of each other and deletes the ones with lower confidence scores.
+
+Final Geometric Filter: The script runs a final, strict geometric verification (Fundamental Matrix) across the entire merged set of points to throw out any remaining outliers.
+
+
+
+### Tips & Tricks
+
+## OOM Prevention
+``python
+batch_results_pts1, batch_results_pts2 = [], []
+
+# Process matching jobs in chunks
+for i in range(0, len(tile_jobs), batch_size):
+    batch = tile_jobs[i:i + batch_size]
+
+    try:
+        # Attempt to run the batch through LightGlue on the GPU
+        b_pts1, b_pts2 = _match_batch_lightglue(batch, device)
+        if len(b_pts1) > 0:
+            batch_results_pts1.append(b_pts1)
+            batch_results_pts2.append(b_pts2)
+
+    except RuntimeError as e:
+        # Catch the dreaded OOM
+        if 'out of memory' in str(e).lower():
+            # Clear VRAM immediately
+            torch.cuda.empty_cache()
+            
+            # Fallback: Process this specific batch one by one
+            for job in batch:
+                s_pts1, s_pts2 = _match_batch_lightglue([job], device)
+                batch_results_pts1.append(s_pts1)
+                batch_results_pts2.append(s_pts2)
+        else:
+            raise # Rethrow if it's a different error
+```
+
+## Use subprocesses
