@@ -3,7 +3,7 @@ title: "Beating OOM: High-Res Image Matching with Tiled LightGlue"
 description: "How to match massive images without blowing up your GPU's VRAM. Exploring two custom approaches to feature matching: a two-stage extract-and-match pipeline, and a direct one-stage tie-point detector."
 pubDate: 2026-04-21
 tags: ["photogrammetry", "sfm", "lightglue", "superpoint", "computer-vision"]
-published: False
+published: True
 ---
 import { Image } from 'astro:assets';
 import tiling_overview from '../../../assets/img/placeholder.png';
@@ -16,6 +16,11 @@ But I glossed over a massive hurdle: **how do you actually get those high-qualit
 If you just toss two 8K images into a modern deep learning matcher like SuperGlue or LightGlue, your GPU will instantly throw an Out-Of-Memory (OOM) error. The attention mechanisms in these models scale quadratically with the number of pixels/features. 
 
 To solve this, we have to chop the images up. Today, I'll walk through my custom pipeline for handling massive images, covering two different architectural approaches I built: a **Two-Stage** (Extract then Match) approach, and a **One-Stage** (Direct Tie-Point) approach.
+
+When to use what?
+|  | Two-Stage | One-Stage |
+| :--- | :----: | ---: |
+| Reusability | High (Keypoints can be reused) | Low (Keypoints are computed on-the-fly) |
 
 ## Approach 1: The Two-Stage "Extract & Match" Pipeline
 
@@ -85,17 +90,58 @@ The script groups these paired zones into batches and sends them to the GPU. Lig
 All the matches discovered across all the localized batches are collected and combined with the initial baseline matches.
 
 **Phase 6: Deduplication**<br />
-The script enforces a strict one-to-one mapping rule. If a point in Image 1 is accidentally matched to multiple different points in Image 2, only the match with the highest confidence score is kept. A final spatial cleanup ensures no duplicate matches are sitting on top of each other.
+The script enforces a strict one-to-one mapping rule (Mutual Nearest Neighbor (MNN) filtering). If a point in Image 1 is accidentally matched to multiple different points in Image 2, only the match with the highest confidence score is kept. A final spatial cleanup ensures no duplicate matches are sitting on top of each other.
 
 ## Approach 2: The One-Stage "Direct Tie-Point" 
 
 Works very similar, but in one step instead of 2 
 
-**Phase 1: Global Rotation Check*<br />
+**Phase 1: Global Rotation Check**<br />
 Do a check in very low resolution to have an indication if the images are even matchable.
 
 **Phase 2: Global Homography**<br />
-It takes the matches found during the low-res rotation check, scales their coordinates back up to the full-resolution image size, and calculates a global "Homography" (a mathematical mapping that roughly describes how the flat surface of Image 1 translates to Image 2).
+It takes the matches found during the low-res check, scales their coordinates back up to the full-resolution image size, and calculates a global "Homography" (a mathematical mapping that roughly describes how the flat surface of Image 1 translates to Image 2).
+```Python
+    # Calculate homography
+    h_full, _ = cv2.findHomography(
+        tps[:, :2], tps[:, 2:],
+        method=cv2.USAC_MAGSAC,
+        ransacReprojThreshold=5.0,
+        confidence=0.9999,
+        maxIters=10000,
+    )
+
+    # tile the base image in tiles
+    tiles_base = tile_image(base_image)
+
+    pairs = []
+    for box in tiles_base:
+        x0_base, y0_base, x1_base, y1_base = box
+        cx = (x0_base + x1_base) / 2.0
+        cy = (y0_base + y1_base) / 2.0
+
+        # Project the tile centre through H_full into the other image
+        pt   = np.array([[[cx, cy]]], dtype=np.float64)
+        proj = cv2.perspectiveTransform(pt, h_full)[0, 0]
+        px, py = float(proj[0]), float(proj[1])
+
+        # Skip if the projected centre lands outside the other image
+        if not (0 <= px < w_other and 0 <= py < h_other):
+            continue
+
+        x0_other = int(np.clip(round(px - half), 0, max(0, w_other - tile_size)))
+        y0_other = int(np.clip(round(py - half), 0, max(0, h_other - tile_size)))
+        x1_other = min(x0_other + tile_size, w_other)
+        y1_other = min(y0_other + tile_size, h_other)
+
+        other_box = (x0_other, y0_other, x1_other, y1_other)
+
+        pairs.append((box, other_box))
+```
+
+<aside class="hint">
+**Note:** I use USAC_MAGSAC here instead of the classic RANSAC. While RANSAC uses a "hard" threshold to identify inliers, MAGSAC++ is threshold-free and marginalizes over noise levels. It’s significantly more robust against the "noise" of high-res imagery, meaning you get a more accurate homography even when your initial matches aren't perfect.
+</aside>
 
 **Phase 3: Targeted Tile Projection**<br />
 Smart Tile Projection:  Instead of randomly dividing both images into grids and checking every tile against every other tile (which is slow), the script uses a targeted approach. It divides Image 1 into overlapping square tiles. For each tile, it uses that global Homography from Step 2 to mathematically predict exactly where the center of that tile should appear in Image 2.
@@ -104,7 +150,7 @@ Smart Tile Projection:  Instead of randomly dividing both images into grids and 
 Targeted Cropping: It then draws a bounding box in Image 2 around that projected center point. Now, it has a specifically paired "Tile 1" and "Tile 2" that are highly likely to overlap.
 
 **Phase 5: Dense Tile Matching**<br />
-Initial Tile Verification: For every predicted tile pair, it runs SuperPoint and LightGlue again. If they find enough baseline matches, the tile pair is deemed valid and moves to the heavy-duty matcher. 6. The RoMa Subprocess: This is where roma_worker.py comes in. RoMa is a very powerful (but memory-hungry) matching model. To prevent CUDA library conflicts with the main software (Metashape) and to manage GPU memory safely, RoMa is isolated in its own separate background process. The main script sends the valid tile pairs to this worker, which computes dense, high-certainty matches and sends the coordinates back.
+Initial Tile Verification: For every predicted tile pair, it runs SuperPoint and LightGlue again. If they find enough baseline matches, the tile pair is deemed valid and moves to the heavy-duty matcher. This is where roma_worker.py comes in. RoMa is a very powerful (but memory-hungry) matching model. To prevent CUDA library conflicts with the main software (Metashape) and to manage GPU memory safely, RoMa is isolated in its own separate background process. The main script sends the valid tile pairs to this worker, which computes dense, high-certainty matches and sends the coordinates back.
 
 **Phase 6: Cleanup**<br />
 Local Cleanup: The RoMa matches are filtered strictly using a local geometric check to ensure quality, and then spatially subsampled so they don't clump up in one spot on the tile. The coordinates are then shifted from their local tile positions back to the global full-image coordinates.
@@ -119,7 +165,7 @@ Final Geometric Filter: The script runs a final, strict geometric verification (
 ### Tips & Tricks
 
 ## OOM Prevention
-``python
+```python
 batch_results_pts1, batch_results_pts2 = [], []
 
 # Process matching jobs in chunks
