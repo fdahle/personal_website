@@ -17,10 +17,25 @@ If you just toss two 8K images into a modern deep learning matcher like SuperGlu
 
 To solve this, we have to chop the images up. Today, I'll walk through my custom pipeline for handling massive images, covering two different architectural approaches I built: a **Two-Stage** (Extract then Match) approach, and a **One-Stage** (Direct Tie-Point) approach.
 
-When to use what?
+This will be a code heavy blogpost. At the end you can find a ipynb with the full code
+
+### The Basics at the beginning:
+Make use of Homography:
+Can be used in multiple ways: 1. To predict where a tile from Image A should land in Image B 2. To verify matches by checking if they fit a consistent geometric transformation and removing outliers.
+
+<aside class="hint">
+**Note:** I use USAC_MAGSAC here instead of the classic RANSAC. While RANSAC uses a "hard" threshold to identify inliers, MAGSAC++ is threshold-free and marginalizes over noise levels. It’s significantly more robust against the "noise" of high-res imagery, meaning you get a more accurate homography even when your initial matches aren't perfect.
+</aside>
+
+Catch OOM errors
+Especially lightglue can be very memory hungry and the required GPU memory can vary a lot based on the image content. To prevent your script from crashing, you can wrap the matching calls in a try-except block that catches OOM errors.
+
+
+### When to use what?
 |  | Two-Stage | One-Stage |
 | :--- | :----: | ---: |
 | Reusability | High (Keypoints can be reused) | Low (Keypoints are computed on-the-fly) |
+
 
 ## Approach 1: The Two-Stage "Extract & Match" Pipeline
 
@@ -68,7 +83,7 @@ for i, j in pairs:
 final_kpts = kpts_sorted[~drop_mask]
 ```
 **Phase 6: Capping**<br />
-Global Capping: If the total number of extracted points exceeds the allowed maximum, the script sorts them by their confidence score and slices the list to keep only the absolute best ones.
+If the total number of extracted points exceeds the allowed maximum, the script sorts them by their confidence score and slices the list to keep only the absolute best ones.
 
 ### Match key points
 
@@ -91,6 +106,45 @@ All the matches discovered across all the localized batches are collected and co
 
 **Phase 6: Deduplication**<br />
 The script enforces a strict one-to-one mapping rule (Mutual Nearest Neighbor (MNN) filtering). If a point in Image 1 is accidentally matched to multiple different points in Image 2, only the match with the highest confidence score is kept. A final spatial cleanup ensures no duplicate matches are sitting on top of each other.
+```python
+# Sort by descending certainty so the best match always wins
+order      = np.argsort(-certainty)
+tie_points = tie_points[order]
+certainty  = certainty[order]
+kpts1      = tie_points[:, :2]
+
+# Pre-compute all neighbour lists in one parallelized call
+tree           = cKDTree(kpts1)
+neighbor_lists = tree.query_ball_point(kpts1, r=radius, workers=-1)
+
+kept = np.ones(len(tie_points), dtype=bool)
+for i, neighbors in enumerate(neighbor_lists):
+    if not kept[i]:
+        continue
+    for nb in neighbors:  # noqa
+        if nb > i:          # nb has lower certainty → suppress it
+            kept[nb] = False
+
+tie_points = tie_points[kept]
+certainty  = certainty[kept]
+
+m, inlier_mask = cv2.findHomography(
+    tie_points[:, :2], tie_points[:, 2:],
+    method=cv2.USAC_MAGSAC,
+    ransacReprojThreshold=reproj_threshold,
+    confidence=0.9999,
+    maxIters=10000,
+)
+
+if m is None or inlier_mask is None:
+    tie_points = np.empty((0, 4))
+    certainty  = np.empty((0,))
+else:
+    inliers = inlier_mask.ravel().astype(bool)
+    tie_points = tie_points[inliers]
+    certainty  = certainty[inliers]
+
+```
 
 ## Approach 2: The One-Stage "Direct Tie-Point" 
 
@@ -101,7 +155,7 @@ Do a check in very low resolution to have an indication if the images are even m
 
 **Phase 2: Global Homography**<br />
 It takes the matches found during the low-res check, scales their coordinates back up to the full-resolution image size, and calculates a global "Homography" (a mathematical mapping that roughly describes how the flat surface of Image 1 translates to Image 2).
-```Python
+```python
     # Calculate homography
     h_full, _ = cv2.findHomography(
         tps[:, :2], tps[:, 2:],
@@ -138,10 +192,6 @@ It takes the matches found during the low-res check, scales their coordinates ba
 
         pairs.append((box, other_box))
 ```
-
-<aside class="hint">
-**Note:** I use USAC_MAGSAC here instead of the classic RANSAC. While RANSAC uses a "hard" threshold to identify inliers, MAGSAC++ is threshold-free and marginalizes over noise levels. It’s significantly more robust against the "noise" of high-res imagery, meaning you get a more accurate homography even when your initial matches aren't perfect.
-</aside>
 
 **Phase 3: Targeted Tile Projection**<br />
 Smart Tile Projection:  Instead of randomly dividing both images into grids and checking every tile against every other tile (which is slow), the script uses a targeted approach. It divides Image 1 into overlapping square tiles. For each tile, it uses that global Homography from Step 2 to mathematically predict exactly where the center of that tile should appear in Image 2.
