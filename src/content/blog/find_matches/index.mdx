@@ -14,12 +14,21 @@ import find_tps_matches from './images/find_tps_matches.png';
 
 import matched_results from '../../../assets/img/placeholder.png';
 
-In my last post, I showed you how to take a set of pairwise feature matches and weave them into a globally consistent Bundler `.out` file for Agisoft Metashape. 
+In my last post, we covered turning pairwise matches into a Bundler .out file. 
+But that assumes you already have high-quality matches—which isn't always a given.
 
-But I glossed over a massive hurdle: **how do you actually get those high-quality matches when your drone or camera images are 40+ megapixels?**
+When working with large-scale historical imagery (in my case, archival aerials of Antarctica), 
+standard tools like SIFT often fail against textureless ice and film degradation. 
+The modern solution is to use deep learning models like SuperPoint and LightGlue. 
+However, feeding massive, high-res scans directly into your GPU is often not feasible. 
+You have to bridge the gap between the large images and still getting a good number of matches.
 
+So here is a guide of how I've built not even one but two different methods for getting reliable matches out of my images.
+Of course this is just one way to do it (and probably not even the best), and there are many tools available out there 
+(A recommendation from my side is the wonderful project of [DEEP-IMAGE-MATCHING](https://github.com/3DOM-FBK/deep-image-matching), in which you can find some code from myself in as well).
+But I hope this can serve as a useful reference for anyone trying to do something similar, and maybe even spark some ideas for how to improve on it.
 
-This will be a code heavy blogpost. At the end you can find a ipynb with the full code
+**Warning**: This will be a code heavy blogpost with extensive code examples. At the end you can find a ipynb with the full code available.
 
 ## The Basics
 
@@ -31,7 +40,8 @@ In the context of photogrammetry, "points" refer to specific locations in an ima
 These can be categorized into two main types:
 - Key Points (KPs): Specific, distinct 2D pixel coordinates identified in a single image (like the sharp corner of a building).
 
-- Tie Points (TPs): Matched pairs of keypoints between two different images. These are what are ultimately needed for Photogrammetry.
+- Tie Points (TPs): Matched pairs of keypoints between two different images. These are what are ultimately needed for Photogrammetry. Can also called "matches" or "correspondences". 
+They represent the same physical point in the real world as seen from two different images.
 
 **Matchers**<br />
 Matchers are algorithms or neural networks that take in keypoints and their descriptors from two images and find correspondences between them. 
@@ -51,11 +61,17 @@ pixel-to-pixel warps (dense matching). Because it analyzes the whole area holist
 extreme viewpoint shifts, drastic lighting changes, or mostly textureless surfaces.
 
 ## The different approaches
+
+For matching the images I didnt build just one, but two different pipelines. Approach 1 is the first one I've built, and is a more classic "extract & match" pipeline. 
+Approach 2 came from the necessity to find matches even with more extreme changes and subpixel accuracy and makes use of two different matchers at the same time.
+
+However, both approaches have their own advantages and disadvantages and can be used in different scenarios. Below is a quick comparison of the two:
+
 |  | Two-Stage | One-Stage |
-| :--- | :----: | ---: |
+| :--- | :---- | :--- |
 |Speed| Faster | Slower (RoMa is computationally heavy) |
 | Reusability | High (Keypoints can be reused) | Low (Keypoints are computed on-the-fly) |
-| Subpixel-Accuracy | No (LightGlue is limited to pixel-level precision) | Yes (RoMa can achieve subpixel accuracy) |
+| Subpixel-Accuracy | No* (SuperPoint/LightGlue are limited to pixel-level precision) | Yes (RoMa can achieve subpixel accuracy) |
 | Complexity | More complex (Separate extraction and matching phases) | Simpler (Directly finds tie points) |
 | Robustness to Extreme Cases | Moderate (Depends on LightGlue's performance) | High (RoMa can handle extreme viewpoint and lighting changes) |
 
@@ -70,7 +86,10 @@ This has the advantage that if you match the same image multiple times (e.g. Ima
 The image is converted to 2D grayscale and checked to ensure it meets the minimum size requirements for the neural network.
 
 **Phase 2: Tiling**<br />
-To handle large images safely, the image is mathematically divided into a grid of overlapping square patches (tiles).
+To handle large images safely, the image is mathematically divided into a grid of overlapping square patches (tiles). 
+As we don't know yet which part of the images will overlap, we have to tile the entire image.
+In Figure 1 you can see an example of how the tiling looks like. The tiles are designed to overlap by around 20% to ensure that keypoints near the edges of tiles are not missed.
+Sometimes tiles do not fit perfectly in the image, so that tiles at the right and bottom edges can overlap even more to ensure full coverage.
 
 <figure>
   <Image src={find_kps_tiles} alt="xxx" />
@@ -79,10 +98,13 @@ To handle large images safely, the image is mathematically divided into a grid o
 
 
 **Phase 3: Extraction**<br />
-The script loops through every tile and feeds it into the SuperPoint model. The model outputs the keypoint coordinates, confidence scores, and descriptors. The local tile coordinates are then shifted to back reflect their true position on the full global image.
+The script loops through every tile and feeds it into the SuperPoint model. 
+The model outputs the keypoint coordinates, confidence scores, and descriptors. 
+The local tile coordinates are then shifted back to reflect their true position on the full global image.
 
 **Phase 4: Global Merge**<br />
-The results from every individual tile are concatenated into three master lists (all keypoints, all scores, all descriptors).
+The results from every individual tile are concatenated into three master lists 
+(all keypoints, all scores, all descriptors).
 
 **Phase 5: Cleanup**<br />
 Because the tiles overlap, the same physical landmark might be detected twice. The script uses a KDTree to search for points that are extremely close together (within a 2-pixel radius) and deletes the duplicate that has the lower confidence score.
