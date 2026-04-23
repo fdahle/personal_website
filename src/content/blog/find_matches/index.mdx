@@ -6,43 +6,65 @@ tags: ["photogrammetry", "sfm", "lightglue", "superpoint", "computer-vision"]
 published: True
 ---
 import { Image } from 'astro:assets';
-import tiling_overview from '../../../assets/img/placeholder.png';
+import find_kps_tiles from './images/find_kps_tiles.png';
+import find_kps_matches from './images/find_kps_matches.png';
+import match_kps_tiles from './images/match_kps_tiles.png';
+import find_tps_tiles from './images/find_tps_tiles.png';
+import find_tps_matches from './images/find_tps_matches.png';
+
 import matched_results from '../../../assets/img/placeholder.png';
 
 In my last post, I showed you how to take a set of pairwise feature matches and weave them into a globally consistent Bundler `.out` file for Agisoft Metashape. 
 
 But I glossed over a massive hurdle: **how do you actually get those high-quality matches when your drone or camera images are 40+ megapixels?**
 
-If you just toss two 8K images into a modern deep learning matcher like SuperGlue or LightGlue, your GPU will instantly throw an Out-Of-Memory (OOM) error. The attention mechanisms in these models scale quadratically with the number of pixels/features. 
-
-To solve this, we have to chop the images up. Today, I'll walk through my custom pipeline for handling massive images, covering two different architectural approaches I built: a **Two-Stage** (Extract then Match) approach, and a **One-Stage** (Direct Tie-Point) approach.
 
 This will be a code heavy blogpost. At the end you can find a ipynb with the full code
 
-### The Basics at the beginning:
-Make use of Homography:
-Can be used in multiple ways: 1. To predict where a tile from Image A should land in Image B 2. To verify matches by checking if they fit a consistent geometric transformation and removing outliers.
+## The Basics
 
-<aside class="hint">
-**Note:** I use USAC_MAGSAC here instead of the classic RANSAC. While RANSAC uses a "hard" threshold to identify inliers, MAGSAC++ is threshold-free and marginalizes over noise levels. It’s significantly more robust against the "noise" of high-res imagery, meaning you get a more accurate homography even when your initial matches aren't perfect.
-</aside>
-
-Catch OOM errors
-Especially lightglue can be very memory hungry and the required GPU memory can vary a lot based on the image content. To prevent your script from crashing, you can wrap the matching calls in a try-except block that catches OOM errors.
+Before we dive into the code, let's establish some quick terminology and look at the core neural networks powering this pipeline.
 
 
-### When to use what?
+**Points**<br />
+In the context of photogrammetry, "points" refer to specific locations in an image that are of interest for matching. 
+These can be categorized into two main types:
+- Key Points (KPs): Specific, distinct 2D pixel coordinates identified in a single image (like the sharp corner of a building).
+
+- Tie Points (TPs): Matched pairs of keypoints between two different images. These are what are ultimately needed for Photogrammetry.
+
+**Matchers**<br />
+Matchers are algorithms or neural networks that take in keypoints and their descriptors from two images and find correspondences between them. 
+They analyze the descriptors to determine which keypoints from Image A likely match with which keypoints from Image B, based on similarity and geometric consistency.
+
+- SIFT: The classic workhorse of computer vision. Unlike the modern tools on this list, SIFT isn't a neural network; 
+it relies on traditional math to find gradients and edges. While it is incredibly reliable and remains the default in
+many commercial photogrammetry apps, it can struggle with extreme changes in lighting, heavy shadows, or severe 
+perspective shifts where modern deep-learning methods excel.
+
+- [SuperPoint](https://arxiv.org/abs/1712.07629) & [Lightglue](https://github.com/cvg/lightglue): The modern gold standard for sparse matching. SuperPoint acts as the "scout," 
+a Convolutional Neural Network (CNN) that extracts highly distinct keypoints and their unique signatures. 
+LightGlue (the successor to SuperGlue) is the "cartographer," matching those signatures using a blazing-fast transformer architecture.
+
+- [RoMa](https://github.com/Parskatt/RoMa): SuperPoint/LightGlue look at specific, isolated points (sparse matching), RoMa looks at the entire image patch to estimate 
+pixel-to-pixel warps (dense matching). Because it analyzes the whole area holistically, it is virtually bulletproof against 
+extreme viewpoint shifts, drastic lighting changes, or mostly textureless surfaces.
+
+## The different approaches
 |  | Two-Stage | One-Stage |
 | :--- | :----: | ---: |
+|Speed| Faster | Slower (RoMa is computationally heavy) |
 | Reusability | High (Keypoints can be reused) | Low (Keypoints are computed on-the-fly) |
+| Subpixel-Accuracy | No (LightGlue is limited to pixel-level precision) | Yes (RoMa can achieve subpixel accuracy) |
+| Complexity | More complex (Separate extraction and matching phases) | Simpler (Directly finds tie points) |
+| Robustness to Extreme Cases | Moderate (Depends on LightGlue's performance) | High (RoMa can handle extreme viewpoint and lighting changes) |
 
-
-## Approach 1: The Two-Stage "Extract & Match" Pipeline
+### Approach 1: The Two-Stage "Extract & Match" Pipeline
 
 This is the classic approach. You find all the interesting points in Image A, find all the points in Image B, and then compare the two sets.
 This has the advantage that if you match the same image multiple times (e.g. Image A to Image B, then Image A to Image C), you only have to extract the keypoints from Image A once. You can reuse those descriptors for every match and they are always identical, which is good for consistency.
 
-### Find key points
+#### Find key points
 
 **Phase 1: Preparation**<br />
 The image is converted to 2D grayscale and checked to ensure it meets the minimum size requirements for the neural network.
@@ -50,14 +72,20 @@ The image is converted to 2D grayscale and checked to ensure it meets the minimu
 **Phase 2: Tiling**<br />
 To handle large images safely, the image is mathematically divided into a grid of overlapping square patches (tiles).
 
+<figure>
+  <Image src={find_kps_tiles} alt="xxx" />
+  <figcaption>xxx</figcaption>
+</figure>
+
+
 **Phase 3: Extraction**<br />
-Tile Extraction: The script loops through every tile and feeds it into the SuperPoint model. The model outputs the keypoint coordinates, confidence scores, and descriptors. The local tile coordinates are then shifted to reflect their true position on the full global image.
+The script loops through every tile and feeds it into the SuperPoint model. The model outputs the keypoint coordinates, confidence scores, and descriptors. The local tile coordinates are then shifted to back reflect their true position on the full global image.
 
 **Phase 4: Global Merge**<br />
-Global Merge: The results from every individual tile are concatenated into three master lists (all keypoints, all scores, all descriptors).
+The results from every individual tile are concatenated into three master lists (all keypoints, all scores, all descriptors).
 
 **Phase 5: Cleanup**<br />
-Spatial Deduplication: Because the tiles overlap, the same physical landmark might be detected twice. The script uses a KDTree to search for points that are extremely close together (within a 2-pixel radius) and deletes the duplicate that has the lower confidence score.
+Because the tiles overlap, the same physical landmark might be detected twice. The script uses a KDTree to search for points that are extremely close together (within a 2-pixel radius) and deletes the duplicate that has the lower confidence score.
 
 ```python
 from scipy.spatial import cKDTree
@@ -85,21 +113,76 @@ final_kpts = kpts_sorted[~drop_mask]
 **Phase 6: Capping**<br />
 If the total number of extracted points exceeds the allowed maximum, the script sorts them by their confidence score and slices the list to keep only the absolute best ones.
 
-### Match key points
+<figure>
+  <Image src={find_kps_matches} alt="xxx" />
+  <figcaption>xxx</figcaption>
+</figure>
+
+
+
+#### Match key points
 
 The matching happens in several phases
 
 **Phase 1: Global Baseline Matching**<br />
-The script takes a subset of the highest-scoring keypoints from both images and attempts a fast, global match. This establishes a rough baseline of how the two images relate to one another.
+The script takes a subset of the highest-scoring keypoints from both images and attempts a fast, global match. 
+This establishes a rough baseline of how the two images relate to one another.
+If there are too few matches, the script can either stop or proceed with a more lenient threshold, depending on how you want to handle edge cases.
 
 **Phase 2: Tile Setup**<br />
-The script identifies the larger of the two images is identified as the "base" image and mathematically divides it into tiles.
+The script identifies the larger of the two images as the "base" image and mathematically divides it into tiles. 
+The smaller image is the "other" image.
 
 **Phase 3: Targeted Cropping**<br />
-Instead of blindly matching everything, it uses the initial baseline matches to calculate where a base tile "lands" in the second image. It draws a localized bounding box around that area in the second image to create a paired search zone.
+Instead of blindly matching everything (which would take $O(N^2)$ complexity), it uses the initial baseline matches to calculate 
+where a base tile "lands" in the second image. Then we can draw a bounding box around that landing zone and only run the heavy-duty matcher 
+on that specific area. This helps for faster matching and and reduces the search space, which increase matching accuracy and reduces false positives
+
+```python
+def get_targeted_search_zone(tile_bounds, initial_matches, padding=0.1):
+    """
+    Demonstrates 'Targeted Cropping' by finding where a tile's 
+    baseline matches land in the second image.
+    """
+    # 1. Identify which baseline matches fall within the current tile
+    # tile_bounds = (min_x, max_x, min_y, max_y)
+    mask = (
+        (initial_matches['pts1'][:, 0] >= tile_bounds[0]) & 
+        (initial_matches['pts1'][:, 0] <  tile_bounds[1]) &
+        (initial_matches['pts1'][:, 1] >= tile_bounds[2]) & 
+        (initial_matches['pts1'][:, 1] <  tile_bounds[3])
+    )
+    
+    # 2. Grab the corresponding locations in Image 2
+    pts_in_image2 = initial_matches['pts2'][mask]
+    
+    if len(pts_in_image2) == 0:
+        return None # No baseline matches to guide us
+
+    # 3. Calculate the Bounding Box in Image 2
+    min_x, max_x = pts_in_image2[:, 0].min(), pts_in_image2[:, 0].max()
+    min_y, max_y = pts_in_image2[:, 1].min(), pts_in_image2[:, 1].max()
+    
+    # 4. Add padding so we don't miss keypoints near the edges
+    width_pad = (max_x - min_x) * padding
+    height_pad = (max_y - min_y) * padding
+    
+    return {
+        "x_range": (min_x - width_pad, max_x + width_pad),
+        "y_range": (min_y - height_pad, max_y + height_pad)
+    }
+```
+
+<figure>
+  <Image src={match_kps_tiles} alt="xxx" />
+  <figcaption>xxx</figcaption>
+</figure>
+
 
 **Phase 4: Batched Inference**<br />
-The script groups these paired zones into batches and sends them to the GPU. LightGlue analyzes these smaller, targeted areas to find dense, high-quality matches. If the GPU runs out of memory, the script catches the error and safely processes them one at a time.
+The script groups these paired zones into batches and sends them to the GPU (for faster processing). 
+LightGlue analyzes these smaller, targeted areas to find dense, high-quality matches. 
+If the GPU runs out of memory, the script catches the error and safely processes them one at a time (instead of batching)
 
 **Phase 5: Merging**<br />
 All the matches discovered across all the localized batches are collected and combined with the initial baseline matches.
@@ -146,12 +229,14 @@ else:
 
 ```
 
-## Approach 2: The One-Stage "Direct Tie-Point" 
+### Approach 2: The One-Stage "Direct Tie-Point" 
 
 Works very similar, but in one step instead of 2 
 
-**Phase 1: Global Rotation Check**<br />
-Do a check in very low resolution to have an indication if the images are even matchable.
+**Phase 1: Initial check**<br />
+Do a check in lower resolution (usually around 2000x2000) to have an indication if the images are even matchable. 
+If they fall below a threshold, the script can either stop or proceed with a more lenient threshold, 
+depending on how you want to handle edge cases.
 
 **Phase 2: Global Homography**<br />
 It takes the matches found during the low-res check, scales their coordinates back up to the full-resolution image size, and calculates a global "Homography" (a mathematical mapping that roughly describes how the flat surface of Image 1 translates to Image 2).
@@ -194,54 +279,96 @@ It takes the matches found during the low-res check, scales their coordinates ba
 ```
 
 **Phase 3: Targeted Tile Projection**<br />
-Smart Tile Projection:  Instead of randomly dividing both images into grids and checking every tile against every other tile (which is slow), the script uses a targeted approach. It divides Image 1 into overlapping square tiles. For each tile, it uses that global Homography from Step 2 to mathematically predict exactly where the center of that tile should appear in Image 2.
+Instead of randomly dividing both images into grids and checking every tile against every other tile (which is slow), 
+the script uses a targeted approach. It divides Image 1 into overlapping square tiles. For each tile, 
+it uses that global Homography from Step 2 to mathematically predict exactly where the center of that tile should appear in Image 2.
 
-**Phase 4:**<br />
-Targeted Cropping: It then draws a bounding box in Image 2 around that projected center point. Now, it has a specifically paired "Tile 1" and "Tile 2" that are highly likely to overlap.
+
+<figure>
+  <Image src={find_tps_tiles} alt="xxx" />
+  <figcaption>xxx</figcaption>
+</figure>
+
+
+**Phase 4: Targeted Cropping**<br />
+It then draws a bounding box in Image 2 around that projected center point. Now, it has a specifically paired "Tile 1" and "Tile 2" that are highly likely to overlap.
 
 **Phase 5: Dense Tile Matching**<br />
-Initial Tile Verification: For every predicted tile pair, it runs SuperPoint and LightGlue again. If they find enough baseline matches, the tile pair is deemed valid and moves to the heavy-duty matcher. This is where roma_worker.py comes in. RoMa is a very powerful (but memory-hungry) matching model. To prevent CUDA library conflicts with the main software (Metashape) and to manage GPU memory safely, RoMa is isolated in its own separate background process. The main script sends the valid tile pairs to this worker, which computes dense, high-certainty matches and sends the coordinates back.
+For every predicted tile pair, it runs SuperPoint and LightGlue again. 
+If they find enough baseline matches, the tile pair is deemed valid and moves to the heavy-duty matcher. 
+This is where RoMa comes in. It takes the full set of keypoints and descriptors from both tiles and finds a dense set of matches between them. 
+
+<aside class="hint">
+**Note:** Why run both? Together they can play together their strengts: LightGlue is fast and reliable, but has no subpixel accuracy.
+RoMa alone works different and ALWAYS find matches, even if they are complete garbage. By using LightGlue as a gatekeeper, 
+we can ensure that RoMa is only applied to tile pairs that have a decent chance of yielding good matches, 
+which saves a lot of time and prevents us from flooding our results with low-quality matches.
+</aside>
+
 
 **Phase 6: Cleanup**<br />
-Local Cleanup: The RoMa matches are filtered strictly using a local geometric check to ensure quality, and then spatially subsampled so they don't clump up in one spot on the tile. The coordinates are then shifted from their local tile positions back to the global full-image coordinates.
+Local Cleanup: The RoMa matches are filtered strictly using a local geometric check to ensure quality, and then spatially subsampled so 
+they don't clump up in one spot on the tile. 
+The coordinates are then shifted from their local tile positions back to the global full-image coordinates.
 
 **Phase 7: Global Merge and Cleanup**<br />
-Deduplication: Once all tiles are processed, all the matches are dumped into one massive list. Because the tiles overlapped, there will be duplicate points. The script uses a KDTree to find points that are sitting virtually on top of each other and deletes the ones with lower confidence scores.
+Once all tiles are processed, all the matches are dumped into one massive list. 
+Because the tiles overlapped, there will be duplicate points. 
+The script uses a KDTree to find points that are sitting virtually on top of each other and deletes the ones with lower confidence scores.
 
+**Phase 8: Finalization**<br />
 Final Geometric Filter: The script runs a final, strict geometric verification (Fundamental Matrix) across the entire merged set of points to throw out any remaining outliers.
 
+
+<figure>
+  <Image src={find_tps_matches} alt="xxx" />
+  <figcaption>xxx</figcaption>
+</figure>
 
 
 ### Tips & Tricks
 
-## OOM Prevention
+**Overlapped tiling**<br />
+When tiling, tile with overlap
+Always build an overlap into your tiling grid. When you slice an image into rigid squares, you inevitably cut straight through 
+crucial geometric features (like the corner of a building or a distinctive rock) that happen to lie exactly on a boundary. 
+By forcing the tiles to overlap (typically by 10-20%), you ensure that every feature is fully preserved in at least one 
+continuous tile, drastically increasing your chance of finding high-quality matches along the seams.
+
+**Homography**<br />
+Make use of Homography:
+Can be used in multiple ways: 1. To predict where a tile from Image A should land in Image B 2. 
+To verify matches by checking if they fit a consistent geometric transformation and removing outliers.
+
+<aside class="hint">
+**Note:** I use USAC_MAGSAC here instead of the classic RANSAC. 
+While RANSAC uses a "hard" threshold to identify inliers, MAGSAC++ is threshold-free and marginalizes over noise levels. 
+It’s significantly more robust against the "noise" of high-res imagery, meaning you get a more accurate homography even when your 
+initial matches aren't perfect.
+</aside>
+
+**OOM handling**<br />
+Deep learning matchers—especially LightGlue and RoMa—are notoriously memory-hungry, and their VRAM appetite spikes wildly 
+depending on the visual complexity of the image pair. To prevent a single dense tile from crashing your entire multi-hour script,
+wrap your heavy inference calls in a targeted try-except block.
 ```python
-batch_results_pts1, batch_results_pts2 = [], []
+# Attempt a memory-intensive process
+try:
+    run_matching_on_gpu()
 
-# Process matching jobs in chunks
-for i in range(0, len(tile_jobs), batch_size):
-    batch = tile_jobs[i:i + batch_size]
+# Catch OOM errors specifically
+except torch.cuda.OutOfMemoryError as e:
+    print(f"OOM Error caught: {e}")
+        
+    # 1. Clear the cache to free up the memory for the next attempt/operation
+        torch.cuda.empty_cache()
+    
+    # 2. Return a fallback (e.g., empty matches), try with lower resolution 
+    # or reduce batch size for the next attempt
+    print("Falling back to CPU or reduced resolution...")
+    return None
 
-    try:
-        # Attempt to run the batch through LightGlue on the GPU
-        b_pts1, b_pts2 = _match_batch_lightglue(batch, device)
-        if len(b_pts1) > 0:
-            batch_results_pts1.append(b_pts1)
-            batch_results_pts2.append(b_pts2)
-
-    except RuntimeError as e:
-        # Catch the dreaded OOM
-        if 'out of memory' in str(e).lower():
-            # Clear VRAM immediately
-            torch.cuda.empty_cache()
-            
-            # Fallback: Process this specific batch one by one
-            for job in batch:
-                s_pts1, s_pts2 = _match_batch_lightglue([job], device)
-                batch_results_pts1.append(s_pts1)
-                batch_results_pts2.append(s_pts2)
-        else:
-            raise # Rethrow if it's a different error
+# Re-raise any other exceptions that aren't OOM related
+except Exception as e:
+    raise e  
 ```
-
-## Use subprocesses
