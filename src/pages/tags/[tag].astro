@@ -1,4 +1,5 @@
 ---
+import { Image } from 'astro:assets';
 import { getCollection } from 'astro:content';
 import BaseHead from '../../components/BaseHead.astro';
 import Header from '../../components/Header.astro';
@@ -7,6 +8,11 @@ import PublicationCard from '../../components/PublicationCard.astro';
 import PublicationModal from '../../components/PublicationModal.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
 import { SITE_TITLE } from '../../consts';
+
+const thumbs = import.meta.glob<{ default: ImageMetadata }>(
+  '../../content/blog/**/thumb.png',
+  { eager: true }
+);
 
 export async function getStaticPaths() {
   const [publications, posts] = await Promise.all([
@@ -106,12 +112,25 @@ const matchedPosts = posts.filter(p => matchesTag(p.data.tags))
             Blog Posts
           </h2>
           <ul class="space-y-4 list-none p-0 m-0">
-            {matchedPosts.map(post => (
+            {matchedPosts.map(post => {
+              const thumb = thumbs[`../../content/blog/${post.id}/thumb.png`]?.default;
+              const image = post.data.heroImage ?? thumb;
+              return (
               <li>
                 <a
                   href={`/blog/${post.id}/`}
-                  class="group flex flex-col sm:flex-row gap-4 p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow no-underline text-inherit"
+                  class="group flex flex-col sm:flex-row gap-5 p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow no-underline text-inherit"
                 >
+                  {image && (
+                    <div class="w-full sm:w-44 flex-shrink-0 overflow-hidden rounded-lg">
+                      <Image
+                        src={image}
+                        width={300} height={180}
+                        alt=""
+                        class="w-full h-32 sm:h-full object-cover rounded-lg"
+                      />
+                    </div>
+                  )}
                   <div class="flex flex-col justify-center">
                     <p class="text-xs text-slate-400 dark:text-slate-500 mb-1">
                       <FormattedDate date={post.data.pubDate} />
@@ -132,7 +151,8 @@ const matchedPosts = posts.filter(p => matchesTag(p.data.tags))
                   </div>
                 </a>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       )}
