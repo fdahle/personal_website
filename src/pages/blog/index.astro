@@ -11,6 +11,11 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
 const posts = (await getCollection('blog'))
   .filter(post => import.meta.env.DEV || post.data.published !== false)
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const thumbs = import.meta.glob<{ default: ImageMetadata }>(
+  '../../content/blog/**/thumb.png',
+  { eager: true }
+);
 ---
 
 <!doctype html>
@@ -26,14 +31,17 @@ const posts = (await getCollection('blog'))
         <p class="text-slate-400 dark:text-slate-500">No posts yet — check back soon.</p>
       ) : (
         <ul class="space-y-5 list-none p-0 m-0">
-          {posts.map(post => (
+          {posts.map(post => {
+            const thumb = thumbs[`../../content/blog/${post.id}/thumb.png`]?.default;
+            const image = post.data.heroImage ?? thumb;
+            return (
             <li>
               <a href={`/blog/${post.id}/`}
                 class="group flex flex-col sm:flex-row gap-5 p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow no-underline text-inherit">
-                {post.data.heroImage && (
+                {image && (
                   <div class="w-full sm:w-44 flex-shrink-0 overflow-hidden rounded-lg">
                     <Image
-                      src={post.data.heroImage}
+                      src={image}
                       width={300} height={180}
                       alt=""
                       class="w-full h-32 sm:h-full object-cover rounded-lg"
@@ -51,7 +59,8 @@ const posts = (await getCollection('blog'))
                 </div>
               </a>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </main>

@@ -29,3 +29,12 @@ figure figcaption::before {
   border-radius: 0 0.5rem 0.5rem 0;
   font-size: 0.925rem;
 }
+
+.warning {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  font-size: 0.925rem;
+}
