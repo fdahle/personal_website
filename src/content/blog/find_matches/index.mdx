@@ -63,6 +63,13 @@ geometric consistency.
   highly robust against extreme viewpoint shifts, drastic lighting changes, and mostly
   textureless surfaces.
 
+<aside class="hint">
+**Update:** Since writing this, a successor to RoMa—[RoMaV2](https://github.com/Parskatt/romav2)—has been released. 
+It builds on the same core principles but promises even better performance and efficiency. 
+I haven't had a chance to test it in this pipeline yet, but I wanted to make sure it was on your radar.
+</aside>
+
+
 **Homography & Geometric Filtering**<br />
 Both approaches rely heavily on computing a homography—a mathematical mapping that describes how
 the flat surface of Image 1 relates to Image 2. We use this both to predict where tiles should
