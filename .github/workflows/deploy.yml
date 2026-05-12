@@ -5,6 +5,10 @@ on:
     branches:
       - main  # This ensures it runs every time you push to 'main'
 
+# Limit the GITHUB_TOKEN to only read the repository contents
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
