@@ -13,7 +13,7 @@ const posts = (await getCollection('blog'))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
 const thumbs = import.meta.glob<{ default: ImageMetadata }>(
-  '../../content/blog/**/thumb.png',
+  ['../../content/blog/**/thumb.png', '../../content/blog/**/thumb.jpg'],
   { eager: true }
 );
 ---
@@ -32,7 +32,7 @@ const thumbs = import.meta.glob<{ default: ImageMetadata }>(
       ) : (
         <ul class="space-y-5 list-none p-0 m-0">
           {posts.map(post => {
-            const thumb = thumbs[`../../content/blog/${post.id}/thumb.png`]?.default;
+            const thumb = (thumbs[`../../content/blog/${post.id}/thumb.png`] ?? thumbs[`../../content/blog/${post.id}/thumb.jpg`])?.default;
             const image = post.data.heroImage ?? thumb;
             return (
             <li>
